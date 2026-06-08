@@ -5,6 +5,7 @@
 
     ./options.nix
     ./boot.nix
+    ./backup.nix
     ./nix.nix
     ./networking.nix
     ./users.nix
