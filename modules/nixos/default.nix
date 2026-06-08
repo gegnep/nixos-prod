@@ -10,5 +10,6 @@
     ./networking.nix
     ./users.nix
     ./services.nix
+    ./pihole.nix
   ];
 }

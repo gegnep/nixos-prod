@@ -13,5 +13,8 @@
 
   mySystem = {
     backup.mountPoint = "/backup";
+    services = {
+      pihole.enable = true;
+    };
   };
 }
