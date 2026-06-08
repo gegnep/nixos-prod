@@ -4,7 +4,7 @@ let
   mount = config.mySystem.backup.mountPoint;
 in
 {
-  # Browsable network share of the backup mirror (NFSv4) for your desktop.
+  # Browsable network share of the backup mirror (NFSv4).
   # Mount it on blackbox in your `nixos` repo, e.g.:
   #   fileSystems."/mnt/homelab" = {
   #     device = "homelab:/"; fsType = "nfs4";
@@ -20,7 +20,6 @@ in
   # NFSv4 needs only 2049.
   networking.firewall.allowedTCPPorts = [ 2049 ];
 
-  # Periodic integrity scrub on both btrfs filesystems.
   services.btrfs.autoScrub = {
     enable = true;
     interval = "weekly";

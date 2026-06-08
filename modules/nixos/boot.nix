@@ -14,7 +14,6 @@
       };
     };
 
-    # Latest mainline kernel — needed for good Intel Arc (DG2) support.
     kernelPackages = pkgs.linuxPackages_latest;
 
     kernelParams = [
@@ -26,7 +25,6 @@
     initrd.verbose = false;
   };
 
-  # No disk swap (disko has none); 31 GiB RAM + zram is plenty for a server.
   zramSwap = {
     enable = true;
     algorithm = "zstd";

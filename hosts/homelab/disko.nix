@@ -26,11 +26,41 @@
               type = "btrfs";
               extraArgs = [ "-f" ];
               subvolumes = {
-                "@"          = { mountpoint = "/";           mountOptions = [ "compress=zstd" "noatime" ]; };
-                "@nix"       = { mountpoint = "/nix";        mountOptions = [ "compress=zstd" "noatime" ]; };
-                "@home"      = { mountpoint = "/home";       mountOptions = [ "compress=zstd" "noatime" ]; };
-                "@var-lib"   = { mountpoint = "/var/lib";    mountOptions = [ "compress=zstd" "noatime" ]; };
-                "@snapshots" = { mountpoint = "/.snapshots"; mountOptions = [ "compress=zstd" "noatime" ]; };
+                "@" = {
+                  mountpoint = "/";
+                  mountOptions = [
+                    "compress=zstd"
+                    "noatime"
+                  ];
+                };
+                "@nix" = {
+                  mountpoint = "/nix";
+                  mountOptions = [
+                    "compress=zstd"
+                    "noatime"
+                  ];
+                };
+                "@home" = {
+                  mountpoint = "/home";
+                  mountOptions = [
+                    "compress=zstd"
+                    "noatime"
+                  ];
+                };
+                "@var-lib" = {
+                  mountpoint = "/var/lib";
+                  mountOptions = [
+                    "compress=zstd"
+                    "noatime"
+                  ];
+                };
+                "@snapshots" = {
+                  mountpoint = "/.snapshots";
+                  mountOptions = [
+                    "compress=zstd"
+                    "noatime"
+                  ];
+                };
               };
             };
           };
@@ -58,8 +88,21 @@
           size = "100%";
           content = {
             type = "btrfs";
-            extraArgs = [ "-f" "-d" "raid1" "-m" "raid1" "/dev/disk/by-id/ata-CT2000BX500SSD1_2525E9C3D2D2-part1" ];
-            subvolumes."@backup" = { mountpoint = "/backup"; mountOptions = [ "compress=zstd" "noatime" ]; };
+            extraArgs = [
+              "-f"
+              "-d"
+              "raid1"
+              "-m"
+              "raid1"
+              "/dev/disk/by-id/ata-CT2000BX500SSD1_2525E9C3D2D2-part1"
+            ];
+            subvolumes."@backup" = {
+              mountpoint = "/backup";
+              mountOptions = [
+                "compress=zstd"
+                "noatime"
+              ];
+            };
           };
         };
       };
