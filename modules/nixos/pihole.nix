@@ -46,7 +46,7 @@ in
       environment = {
         TZ = cfg.timezone;
         FTLCONF_dns_upstreams = cfg.upstreams;
-        FTLCONF_dns_listeningMode = "local";
+        FTLCONF_dns_listeningMode = "all";
         FTLCONF_webserver_port = toString cfg.webPort;
       };
 

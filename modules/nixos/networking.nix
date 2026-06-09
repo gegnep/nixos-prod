@@ -4,12 +4,7 @@
     enable = true;
     networks."10-wired" = {
       matchConfig.Name = "en*";
-      networkConfig = {
-        #Address = "192.168.1.200/24";
-        #Gateway = "192.168.1.254";
-        #DNS = "192.168.1.254";
-        DHCP = "yes";
-      };
+      networkConfig.DHCP = "yes";
     };
   };
   networking.useNetworkd = true;
@@ -17,7 +12,15 @@
 
   services.resolved.enable = true;
 
-  services.tailscale.enable = true;
+  services.tailscale = {
+    enable = true;
+    useRoutingFeatures = "server";
+    extraSetFlags = [
+      "--advertise-exit-node"
+      "--ssh"
+    ];
+  };
+  networking.firewall.trustedInterfaces = [ "tailscale0" ];
 
   services.openssh = {
     enable = true;
