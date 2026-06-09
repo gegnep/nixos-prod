@@ -15,6 +15,7 @@
     backup.mountPoint = "/backup";
     services = {
       pihole.enable = true;
+      buildServer.enable = true;
     };
   };
 }
