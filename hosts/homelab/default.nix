@@ -13,6 +13,9 @@
 
   mySystem = {
     backup.mountPoint = "/backup";
+    hardware = {
+      nvidia.enable = true;
+    };
     services = {
       pihole.enable = true;
       buildServer.enable = true;
