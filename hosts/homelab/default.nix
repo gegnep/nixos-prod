@@ -43,6 +43,7 @@
         enable = true;
         openRegistration = true;
       };
+      restic.enable = true;
     };
   };
 }

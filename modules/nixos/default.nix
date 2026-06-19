@@ -24,5 +24,6 @@
     ./netdata.nix
     ./beszel.nix
     ./atuin.nix
+    ./restic.nix
   ];
 }
