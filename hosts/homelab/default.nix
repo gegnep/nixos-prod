@@ -30,6 +30,15 @@
       caddy.enable = true;
       homepage.enable = true;
       netdata.enable = false;
+      beszel = {
+        hub.enable = true;
+        agent = {
+          enable = true;
+          nvidia = true;
+          smart = true;
+          containers = true;
+        };
+      };
     };
   };
 }

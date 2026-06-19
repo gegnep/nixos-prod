@@ -97,10 +97,10 @@ in
                 description = "File sync";
               };
             })
-            (lib.optional (has "netdata") {
-              "Netdata" = {
+            (lib.optional ((svc ? beszel) && svc.beszel.hub.enable) {
+              "Beszel" = {
                 href = "http://stats.${d}";
-                description = "Live metrics";
+                description = "Metrics & GPU";
               };
             })
           ];

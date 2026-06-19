@@ -38,7 +38,7 @@ in
         // lib.optionalAttrs (has "open-webui") (vhost "ai" svc.open-webui.port)
         // lib.optionalAttrs (has "pihole") (vhost "dns" svc.pihole.webPort)
         // lib.optionalAttrs (has "syncthing") (vhost "sync" svc.syncthing.guiPort)
-        // lib.optionalAttrs (has "netdata") (vhost "stats" svc.netdata.port)
+        // lib.optionalAttrs ((svc ? beszel) && svc.beszel.hub.enable) (vhost "stats" svc.beszel.hub.port)
         // lib.optionalAttrs (has "ntfy") (vhost "ntfy" svc.ntfy.port);
     };
 
