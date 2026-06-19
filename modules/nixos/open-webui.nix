@@ -34,7 +34,7 @@ in
         SCARF_NO_ANALYTICS = "True";
       };
     };
-
+    systemd.services.open-webui.serviceConfig.EnvironmentFile = "/var/lib/open-webui/secret.env";
     networking.firewall.interfaces."tailscale0".allowedTCPPorts = [ cfg.port ];
   };
 }
