@@ -20,5 +20,6 @@
     ./ntfy.nix
     ./caddy.nix
     ./homepage.nix
+    ./netdata.nix
   ];
 }

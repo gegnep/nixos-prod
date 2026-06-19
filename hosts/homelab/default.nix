@@ -29,6 +29,7 @@
       ntfy.enable = true;
       caddy.enable = true;
       homepage.enable = true;
+      netdata.enable = false;
     };
   };
 }
