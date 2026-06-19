@@ -44,6 +44,7 @@
     gnupg
 
     nix-output-monitor
+    nixfmt
     sops
     age
 
@@ -68,10 +69,9 @@
     ipcalc
 
     cowsay
-
     fastfetch
-    fzf
-    nnn
+
+    claude-code
   ];
 
   programs.bat = {
