@@ -19,7 +19,7 @@ in
 
     services.harmonia.cache = {
       enable = true;
-      signKeyPaths = [ "/var/lib/harmonia/cache-priv-key.pem" ];
+      signKeyPaths = [ config.sops.secrets.harmonia-cache-key.path ];
       settings.bind = "[::]:5000";
     };
   };
