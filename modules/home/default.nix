@@ -12,6 +12,10 @@
     username = "pengeg";
     homeDirectory = "/home/pengeg";
     stateVersion = "26.05";
+    sessionVariables = {
+      EDITOR = "nvim";
+      SOPS_EDITOR = "nvim -n -i NONE -u NORC";
+    };
   };
 
   catppuccin = {
@@ -40,6 +44,8 @@
     gnupg
 
     nix-output-monitor
+    sops
+    age
 
     zip
     unzip

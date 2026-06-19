@@ -19,6 +19,11 @@
       inputs.nixpkgs.follows = "nixpkgs";
     };
 
+    sops-nix = {
+      url = "github:Mic92/sops-nix";
+      inputs.nixpkgs.follows = "nixpkgs";
+    };
+
     catppuccin.url = "github:catppuccin/nix";
 
     # Desktop config as a SOURCE TREE (flake = false): we import individual
@@ -43,6 +48,7 @@
             { nixpkgs.hostPlatform = "x86_64-linux"; }
             ./hosts/${hostname}
             inputs.disko.nixosModules.disko
+            inputs.sops-nix.nixosModules.sops
             home-manager.nixosModules.home-manager
             (
               { config, ... }:

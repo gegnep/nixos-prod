@@ -55,7 +55,7 @@ in
       # Admin/API password lives OUTSIDE the world-readable Nix store.
       # Create /var/lib/pihole/secret.env (root-only) containing:
       #   FTLCONF_webserver_api_password=<your-password>
-      environmentFiles = [ "/var/lib/pihole/secret.env" ];
+      environmentFiles = [ config.sops.templates."pihole.env".path ];
 
       volumes = [ "/var/lib/pihole/etc-pihole:/etc/pihole" ];
     };

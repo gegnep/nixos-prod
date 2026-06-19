@@ -9,6 +9,7 @@
     ./nix.nix
     ./networking.nix
     ./users.nix
+    ./sops.nix
 
     ./services.nix
     ./pihole.nix
