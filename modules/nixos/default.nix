@@ -19,5 +19,6 @@
     ./smartd.nix
     ./ntfy.nix
     ./caddy.nix
+    ./homepage.nix
   ];
 }
