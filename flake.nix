@@ -19,6 +19,8 @@
       inputs.nixpkgs.follows = "nixpkgs";
     };
 
+    catppuccin.url = "github:catppuccin/nix";
+
     # Desktop config as a SOURCE TREE (flake = false): we import individual
     # self-contained home modules by store path without inheriting its inputs.
     desktop = {

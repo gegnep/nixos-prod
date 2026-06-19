@@ -2,6 +2,7 @@
 {
   imports = [
     inputs.nvf.homeManagerModules.default
+    inputs.catppuccin.homeModules.catppuccin
 
     "${inputs.desktop}/modules/home/programs/neovim.nix"
     "${inputs.desktop}/modules/home/shell/zsh.nix"
@@ -11,6 +12,11 @@
     username = "pengeg";
     homeDirectory = "/home/pengeg";
     stateVersion = "26.05";
+  };
+
+  catppuccin = {
+    flavor = "mocha";
+    accent = "lavender";
   };
 
   programs.home-manager.enable = true;
@@ -60,11 +66,6 @@
     nnn
   ];
 
-  programs.direnv = {
-    enable = true;
-    nix-direnv.enable = true;
-  };
-
   programs.bat = {
     enable = true;
     config = {
@@ -76,6 +77,7 @@
       ];
     };
   };
+  catppuccin.bat.enable = true;
 
   programs.btop = {
     enable = true;
@@ -83,6 +85,12 @@
       vim_keys = true;
       theme_background = false;
     };
+  };
+  catppuccin.btop.enable = true;
+
+  programs.direnv = {
+    enable = true;
+    nix-direnv.enable = true;
   };
 
   programs.eza = {
@@ -95,6 +103,12 @@
       "--time-style=relative"
     ];
   };
+
+  programs.fzf = {
+    enable = true;
+    enableZshIntegration = true;
+  };
+  catppuccin.fzf.enable = true;
 
   programs.tmux = {
     enable = true;
@@ -116,5 +130,12 @@
       tmuxPlugins.yank
       tmuxPlugins.prefix-highlight
     ];
+  };
+  catppuccin.tmux.enable = true;
+
+  programs.zoxide = {
+    enable = true;
+    enableZshIntegration = true;
+    options = [ "--cmd cd" ];
   };
 }
