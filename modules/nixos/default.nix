@@ -16,5 +16,6 @@
     ./syncthing.nix
     ./ollama.nix
     ./open-webui.nix
+    ./smartd.nix
   ];
 }

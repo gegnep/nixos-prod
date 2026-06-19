@@ -25,6 +25,7 @@
         enable = true;
         port = 3000;
       };
+      smartd.enable = true;
     };
   };
 }
