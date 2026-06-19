@@ -26,18 +26,13 @@ in
         OLLAMA_KEEP_ALIVE = "30m"; # default unloads after 5m
       };
 
-      # Q4_K_M for > 12b, Q5_K_M for <= 12b
       loadModels = [
+        "mistral-small3.2:24b" # chunkiest model we can run on this jawn
         "qwen3:14b" # general purpose
         "qwen2.5-coder:14b" # coder
-        "deepseek-r1:14b" # deep reasoning
-        "gemma3:12b" # multimodal
+        "gemma4:e4b" # multimodal, possibly "best" model here rn
         "mistral-nemo:12b-instruct-2407-q5_K_M" # 128k native context
-
-        # fast models
-        "qwen3:8b"
-        "mistral:7b"
-        "gemma3:4b"
+        "qwen3.5:9b" # latest qwen model that fits on the 3060
       ];
     };
   };
