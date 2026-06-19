@@ -14,5 +14,6 @@
     ./pihole.nix
     ./buildserver.nix
     ./syncthing.nix
+    ./ollama.nix
   ];
 }

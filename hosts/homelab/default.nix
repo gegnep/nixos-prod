@@ -20,6 +20,7 @@
       pihole.enable = true;
       buildServer.enable = true;
       syncthing.enable = true;
+      ollama.enable = true;
     };
   };
 }
