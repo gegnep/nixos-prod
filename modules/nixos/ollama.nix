@@ -30,6 +30,7 @@ in
         "mistral-small3.2:24b" # chunkiest model we can run on this jawn
         "gemma4:e4b" # multimodal, possibly "best" model here rn
         "qwen3.5:9b" # latest qwen model that fits on the 3060
+        "qwen3.5:2b" # use for anything on the site that dosent need any other model
       ];
     };
   };
