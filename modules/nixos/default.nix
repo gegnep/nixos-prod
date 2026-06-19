@@ -23,5 +23,6 @@
     ./homepage.nix
     ./netdata.nix
     ./beszel.nix
+    ./atuin.nix
   ];
 }

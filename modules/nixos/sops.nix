@@ -8,6 +8,7 @@
   sops.secrets.harmonia-cache-key = {
     restartUnits = [ "harmonia.service" ];
   };
+  sops.secrets.atuin-key.owner = "pengeg";
 
   sops.templates."pihole.env" = {
     content = "FTLCONF_webserver_api_password=${config.sops.placeholder.pihole-webpassword}";

@@ -103,6 +103,12 @@ in
                 description = "Metrics & GPU";
               };
             })
+            (lib.optional (has "atuin") {
+              "Atuin" = {
+                href = "http://atuin.homelab";
+                description = "Shell history sync";
+              };
+            })
           ];
         }
       ];

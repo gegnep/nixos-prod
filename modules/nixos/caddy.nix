@@ -39,7 +39,8 @@ in
         // lib.optionalAttrs (has "pihole") (vhost "dns" svc.pihole.webPort)
         // lib.optionalAttrs (has "syncthing") (vhost "sync" svc.syncthing.guiPort)
         // lib.optionalAttrs ((svc ? beszel) && svc.beszel.hub.enable) (vhost "stats" svc.beszel.hub.port)
-        // lib.optionalAttrs (has "ntfy") (vhost "ntfy" svc.ntfy.port);
+        // lib.optionalAttrs (has "ntfy") (vhost "ntfy" svc.ntfy.port)
+        // lib.optionalAttrs (has "atuin") (vhost "atuin" svc.atuin.port);
     };
 
     networking.firewall.allowedTCPPorts = [ 80 ];

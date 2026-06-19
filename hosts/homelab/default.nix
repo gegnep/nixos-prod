@@ -39,6 +39,10 @@
           containers = true;
         };
       };
+      atuin = {
+        enable = true;
+        openRegistration = true;
+      };
     };
   };
 }
