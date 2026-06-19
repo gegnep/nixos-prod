@@ -17,5 +17,6 @@
     ./ollama.nix
     ./open-webui.nix
     ./smartd.nix
+    ./ntfy.nix
   ];
 }

@@ -26,6 +26,7 @@
         port = 3000;
       };
       smartd.enable = true;
+      ntfy.enable = true;
     };
   };
 }
