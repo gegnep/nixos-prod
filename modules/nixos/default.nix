@@ -15,5 +15,6 @@
     ./buildserver.nix
     ./syncthing.nix
     ./ollama.nix
+    ./open-webui.nix
   ];
 }

@@ -21,6 +21,10 @@
       buildServer.enable = true;
       syncthing.enable = true;
       ollama.enable = true;
+      open-webui = {
+        enable = true;
+        port = 3000;
+      };
     };
   };
 }
