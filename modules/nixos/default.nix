@@ -18,5 +18,6 @@
     ./open-webui.nix
     ./smartd.nix
     ./ntfy.nix
+    ./caddy.nix
   ];
 }

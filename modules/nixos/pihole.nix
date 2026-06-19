@@ -48,6 +48,8 @@ in
         FTLCONF_dns_upstreams = cfg.upstreams;
         FTLCONF_dns_listeningMode = "all";
         FTLCONF_webserver_port = toString cfg.webPort;
+        FTLCONF_webserver_domain = "dns.homelab";
+        FTLCONF_misc_dnsmasq_lines = "address=/homelab/100.68.176.20";
       };
 
       # Admin/API password lives OUTSIDE the world-readable Nix store.

@@ -27,6 +27,7 @@
       };
       smartd.enable = true;
       ntfy.enable = true;
+      caddy.enable = true;
     };
   };
 }

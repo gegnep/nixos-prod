@@ -43,6 +43,7 @@ in
 
       settings = {
         options.urAccepted = -1;
+        gui.insecureSkipHostcheck = true;
         # devices = { };
         # folders = { };
       };
