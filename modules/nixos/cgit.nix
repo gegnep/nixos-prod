@@ -69,6 +69,7 @@ let
     readme=:README.md
     readme=:readme.md
 
+    section-from-path=1
     scan-path=${cfg.repoDir}
     remove-suffix=1
     enable-commit-graph=1
