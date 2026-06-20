@@ -44,6 +44,7 @@
         openRegistration = true;
       };
       restic.enable = true;
+      cgit.enable = true;
     };
   };
 }

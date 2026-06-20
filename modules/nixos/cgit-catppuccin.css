@@ -1,0 +1,106 @@
+/* modules/nixos/cgit-catppuccin.css
+   Catppuccin Mocha + Lavender accent for cgit. Sole stylesheet (css=/theme.css),
+   so it must cover every surface — anything unstyled falls back to UA defaults.
+   base #1e1e2e mantle #181825 crust #11111b surface0 #313244 surface1 #45475a
+   overlay0 #6c7086 subtext0 #a6adc8 subtext1 #bac2de text #cdd6f4
+   lavender #b4befe blue #89b4fa sky #89dceb green #a6e3a1 red #f38ba8
+   yellow #f9e2af mauve #cba6f7 */
+
+/* ---- base ---- */
+body, div#cgit {
+  background: #1e1e2e;
+  color: #cdd6f4;
+  font-family: sans-serif;
+}
+#cgit a            { color: #b4befe; }
+#cgit a:hover      { color: #89b4fa; }
+#cgit a:visited    { color: #b4befe; }
+#cgit img.logo     { display: none; }   /* stock cgit.png has a baked light bg */
+#cgit td.logo      { display: none; }
+
+/* ---- header band ---- */
+#cgit table#header           { background: #11111b; }
+#cgit table#header td         { background: #11111b !important; }
+#cgit table#header td.main    { color: #cdd6f4 !important; font-size: 1.4em; }
+#cgit table#header td.main a  { color: #b4befe !important; }
+#cgit table#header td.sub     { color: #a6adc8 !important; border-bottom-color: #313244 !important; }
+
+/* ---- nav tabs ---- */
+#cgit table.tabs                { border-bottom: 3px solid #313244; }
+#cgit table.tabs td a           { color: #a6adc8 !important; background: #181825; padding: 2px 0.75em; }
+#cgit table.tabs td a:hover     { color: #cdd6f4 !important; }
+#cgit table.tabs td a.active,
+#cgit table.tabs td.active a    { color: #1e1e2e !important; background: #b4befe !important; font-weight: bold; }
+#cgit table.tabs td.form input,
+#cgit table.tabs td.form select { background: #181825; color: #cdd6f4; border: 1px solid #45475a; }
+
+/* ---- form controls (UA defaults win on search/select without appearance reset) ---- */
+#cgit input,
+#cgit select,
+#cgit textarea {
+  -moz-appearance: none;
+  appearance: none;
+  background-color: #181825 !important;
+  color: #cdd6f4 !important;
+  border: 1px solid #45475a !important;
+  border-radius: 3px;
+  padding: 1px 4px;
+}
+#cgit input[type=submit]        { background-color: #313244 !important; cursor: pointer; }
+#cgit input[type=submit]:hover  { background-color: #45475a !important; }
+
+/* ---- content + listings ---- */
+#cgit div.content        { border-color: #313244; background: #1e1e2e; }
+#cgit table.list         { background: #1e1e2e; }
+#cgit table.list tr      { background: #1e1e2e; }
+#cgit table.list tr:nth-child(even) { background: #181825; }
+#cgit table.list tr:hover:not(.nohover):not(.nohover-highlight) { background: #313244; }
+#cgit table.list th      { background: #11111b; color: #bac2de; border-color: #313244; }
+#cgit table.list td      { border-color: #313244; }
+#cgit table.list td.logsubject,
+#cgit table.list td.logsubject a { color: #cdd6f4; }
+#cgit table.list td.logmsg { background: #181825; color: #a6adc8; }
+#cgit td.reposection      { background: #181825; color: #a6adc8; }
+
+/* ---- commit / blob / about ---- */
+#cgit table.commit-info,
+#cgit table.blame,
+#cgit table.blob          { background: #181825; color: #cdd6f4; }
+#cgit table.commit-info th { color: #a6adc8; }
+#cgit div.commit-subject  { color: #cdd6f4; font-weight: bold; }
+#cgit div.commit-msg,
+#cgit div.notes-header    { color: #a6adc8; }
+#cgit div.notes           { background: #181825; border-color: #313244; }
+#cgit table.blob td.linenumbers a { color: #6c7086; }
+#cgit table.blob td.lines pre     { color: #cdd6f4; }
+
+/* ---- diffs ---- */
+#cgit div.diffstat-header { background: #181825; color: #a6adc8; border-color: #313244; }
+#cgit table.diffstat td.mode,
+#cgit table.diffstat td.lines     { color: #a6adc8; }
+#cgit table.diffstat td span.add  { background: #a6e3a1; color: #1e1e2e; }
+#cgit table.diffstat td span.del  { background: #f38ba8; color: #1e1e2e; }
+#cgit table.diff td div.head { color: #cdd6f4; font-weight: bold; }
+#cgit table.diff td div.hunk { color: #89dceb; }
+#cgit table.diff td div.add  { color: #a6e3a1; }
+#cgit table.diff td div.del  { color: #f38ba8; }
+#cgit table.diff td div.ctx  { color: #a6adc8; }
+#cgit table.ssdiff td.add      { background: #2a3328; color: #cdd6f4; }
+#cgit table.ssdiff td.add_dark { background: #364a2f; }
+#cgit table.ssdiff td.del      { background: #3a2630; color: #cdd6f4; }
+#cgit table.ssdiff td.del_dark { background: #4a2c38; }
+#cgit table.ssdiff td.hunk     { background: #181825; color: #89dceb; }
+
+/* ---- ref decorations ---- */
+#cgit a.branch-deco       { color: #1e1e2e; background: #a6e3a1; }
+#cgit a.tag-deco,
+#cgit a.tag-annotated-deco { color: #1e1e2e; background: #f9e2af; }
+#cgit a.remote-deco       { color: #1e1e2e; background: #89b4fa; }
+#cgit a.deco              { color: #1e1e2e; background: #cba6f7; }
+
+/* ---- misc ---- */
+#cgit div.error  { color: #f38ba8; background: #181825; border-color: #313244; }
+#cgit div.footer { color: #9399b2; }
+#cgit a.button   { color: #b4befe; background: #181825; border-color: #45475a; }
+#cgit td#sidebar a.menu { color: #b4befe; }
+#cgit div#summary { background: #1e1e2e; }

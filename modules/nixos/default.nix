@@ -25,5 +25,6 @@
     ./beszel.nix
     ./atuin.nix
     ./restic.nix
+    ./cgit.nix
   ];
 }
