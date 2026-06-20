@@ -104,3 +104,20 @@ body, div#cgit {
 #cgit a.button   { color: #b4befe; background: #181825; border-color: #45475a; }
 #cgit td#sidebar a.menu { color: #b4befe; }
 #cgit div#summary { background: #1e1e2e; }
+
+/* rendered markdown (about/readme) + blob code surface */
+#cgit pre,
+#cgit div.content pre {
+  background: #181825;
+  color: #cdd6f4;
+  padding: 0.6em 0.8em;
+  border-radius: 4px;
+  overflow-x: auto;
+}
+#cgit code {
+  background: #181825;
+  color: #f5c2e7;
+  padding: 0.05em 0.35em;
+  border-radius: 3px;
+}
+#cgit pre code { background: none; color: inherit; padding: 0; }  /* don't pink-wash highlighted blobs */

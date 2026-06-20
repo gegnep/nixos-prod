@@ -9,6 +9,49 @@ let
   cfg = config.mySystem.services.cgit;
   sock = config.services.fcgiwrap.instances.cgit.socket.address;
 
+  pyEnv = pkgs.python3.withPackages (
+    ps: with ps; [
+      pygments
+      markdown
+    ]
+  );
+
+  # blob syntax highlighting — inline styles, so no pygments CSS to coordinate
+  highlightPy = pkgs.writeText "cgit-highlight.py" ''
+    import sys, io
+    from pygments import highlight
+    from pygments.util import ClassNotFound
+    from pygments.lexers import TextLexer, guess_lexer, guess_lexer_for_filename
+    from pygments.formatters import HtmlFormatter
+    sys.stdin  = io.TextIOWrapper(sys.stdin.buffer,  encoding="utf-8", errors="replace")
+    sys.stdout = io.TextIOWrapper(sys.stdout.buffer, encoding="utf-8", errors="replace")
+    data = sys.stdin.read()
+    name = sys.argv[1] if len(sys.argv) > 1 else ""
+    fmt = HtmlFormatter(style="${cfg.highlightStyle}", noclasses=True, nobackground=True)
+    try:
+        lexer = guess_lexer_for_filename(name, data)
+    except ClassNotFound:
+        lexer = guess_lexer(data) if data[:2] == "#!" else TextLexer()
+    except TypeError:
+        lexer = TextLexer()
+    sys.stdout.write(highlight(data, lexer, fmt))
+  '';
+  sourceFilter = pkgs.writeShellScript "cgit-source-filter" ''
+    exec ${pyEnv}/bin/python3 ${highlightPy} "$@"
+  '';
+
+  # about/readme markdown -> HTML
+  aboutPy = pkgs.writeText "cgit-about.py" ''
+    import sys, markdown
+    sys.stdout.write(markdown.markdown(
+        sys.stdin.read(),
+        extensions=["fenced_code", "tables", "sane_lists", "toc"],
+    ))
+  '';
+  aboutFilter = pkgs.writeShellScript "cgit-about-filter" ''
+    exec ${pyEnv}/bin/python3 ${aboutPy} "$@"
+  '';
+
   themeDir = pkgs.runCommandLocal "cgit-theme" { } ''
     mkdir -p "$out"
     cat ${./cgit-catppuccin.css} > "$out/theme.css"
@@ -21,12 +64,18 @@ let
     logo=/cgit.png
     favicon=/favicon.ico
 
+    source-filter=exec:${sourceFilter}
+    about-filter=exec:${aboutFilter}
+    readme=:README.md
+    readme=:readme.md
+
     scan-path=${cfg.repoDir}
     remove-suffix=1
     enable-commit-graph=1
     enable-log-filecount=1
     enable-log-linecount=1
     max-stats=year
+    cache-size=0
 
     clone-url=ssh://${cfg.sshUser}@git.${cfg.domain}${cfg.repoDir}/$CGIT_REPO_URL.git
   '';
@@ -57,6 +106,16 @@ in
       type = lib.types.package;
       default = pkgs.cgit;
       description = "cgit package. Swap to pkgs.cgit-pink for the actively-maintained fork.";
+    };
+
+    highlightStyle = lib.mkOption {
+      type = lib.types.str;
+      default = "monokai";
+      description = ''
+        Pygments style for blob highlighting (inline-styled). Built-in dark options
+        on current pygments: gruvbox-dark, one-dark, dracula, nord-darker, material.
+        Invalid names fail at view-time (not build), so swapping is cheap.
+      '';
     };
   };
 
