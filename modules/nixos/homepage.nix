@@ -103,22 +103,10 @@ in
                 description = "Metrics & GPU";
               };
             })
-            (lib.optional (has "atuin") {
-              "Atuin" = {
-                href = "http://atuin.homelab";
-                description = "Shell history sync";
-              };
-            })
             (lib.optional (has "cgit") {
               "cgit" = {
                 href = "http://git.${d}";
                 description = "Git repositories";
-              };
-            })
-            (lib.optional (has "ntfy") {
-              "ntfy" = {
-                href = "http://ntfy.${d}";
-                description = "Push notifications";
               };
             })
           ];
