@@ -40,7 +40,6 @@ in
         dashboard = {
           name = "Beszel";
           description = "Metrics & GPU";
-          order = 40;
         };
       };
     })

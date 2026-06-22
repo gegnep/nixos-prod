@@ -44,7 +44,6 @@ in
       dashboard = {
         name = "Open WebUI";
         description = "Ollama chat frontend";
-        order = 10;
       };
     };
   };

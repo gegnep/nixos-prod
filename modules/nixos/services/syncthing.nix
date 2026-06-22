@@ -55,7 +55,6 @@ in
       dashboard = {
         name = "Syncthing";
         description = "File sync";
-        order = 30;
       };
     };
   };

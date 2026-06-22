@@ -150,7 +150,6 @@ in
       dashboard = {
         name = "cgit";
         description = "Git repositories";
-        order = 50;
       };
       rawConfig = ''
         handle /theme.css {

@@ -9,15 +9,10 @@ let
   proxy = config.mySystem.proxy;
   d = proxy.domain;
 
-  # Tiles come from the proxy registry: every vhost whose dashboard != null.
+  # Tiles come from the proxy registry: every vhost whose dashboard != null,
+  # ordered alphabetically by tile name.
   tiled = lib.filter (v: v.dashboard != null) (lib.attrValues proxy.vhosts);
-  sorted = lib.sort (
-    a: b:
-    if a.dashboard.order != b.dashboard.order then
-      a.dashboard.order < b.dashboard.order
-    else
-      a.dashboard.name < b.dashboard.name
-  ) tiled;
+  sorted = lib.sort (a: b: a.dashboard.name < b.dashboard.name) tiled;
 
   mkTile = v: {
     ${v.dashboard.name} = {

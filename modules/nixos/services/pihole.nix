@@ -78,7 +78,6 @@ in
         name = "Pi-hole";
         description = "DNS / adblock";
         path = "/admin";
-        order = 20;
       };
     };
   };

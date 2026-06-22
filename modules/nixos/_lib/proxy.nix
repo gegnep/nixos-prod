@@ -34,11 +34,6 @@ let
         default = "Services";
         description = "Dashboard group; needs a matching settings.layout entry in homepage.nix.";
       };
-      order = lib.mkOption {
-        type = lib.types.int;
-        default = 100;
-        description = "Sort weight within the group (lower first; ties broken by name).";
-      };
     };
   };
 
