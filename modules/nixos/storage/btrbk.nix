@@ -3,16 +3,7 @@ let
   target = config.mySystem.backup.mountPoint;
 in
 {
-  fileSystems."/mnt/nvme" = {
-    device = "/dev/disk/by-partlabel/disk-nvme-root";
-    fsType = "btrfs";
-    options = [
-      "subvolid=5"
-      "noatime"
-      "nofail"
-    ];
-  };
-
+  # The /mnt/nvme top-level mount that btrbk snapshots from lives in filesystems.nix.
   services.btrbk.instances.homelab = {
     onCalendar = "hourly";
     settings = {
