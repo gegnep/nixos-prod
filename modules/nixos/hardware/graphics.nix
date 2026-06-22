@@ -6,10 +6,7 @@
 }:
 
 {
-  imports = [
-    ./nvidia.nix
-  ];
-
+  # nvidia.nix is picked up by the auto-importer; no explicit import needed.
   hardware.enableRedistributableFirmware = true;
   hardware.cpu.amd.updateMicrocode = lib.mkDefault config.hardware.enableRedistributableFirmware;
 
