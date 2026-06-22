@@ -33,6 +33,16 @@ in
         host = "127.0.0.1";
         port = cfg.hub.port;
       };
+
+      mySystem.proxy.vhosts.beszel = {
+        sub = "stats";
+        upstream = "127.0.0.1:${toString cfg.hub.port}";
+        dashboard = {
+          name = "Beszel";
+          description = "Metrics & GPU";
+          order = 40;
+        };
+      };
     })
 
     (lib.mkIf cfg.agent.enable {

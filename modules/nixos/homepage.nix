@@ -6,10 +6,29 @@
 
 let
   cfg = config.mySystem.services.homepage;
-  svc = config.mySystem.services;
-  d = cfg.domain;
+  proxy = config.mySystem.proxy;
+  d = proxy.domain;
 
-  has = n: (svc ? ${n}) && svc.${n}.enable;
+  # Tiles come from the proxy registry: every vhost whose dashboard != null.
+  tiled = lib.filter (v: v.dashboard != null) (lib.attrValues proxy.vhosts);
+  sorted = lib.sort (
+    a: b:
+    if a.dashboard.order != b.dashboard.order then
+      a.dashboard.order < b.dashboard.order
+    else
+      a.dashboard.name < b.dashboard.name
+  ) tiled;
+
+  mkTile = v: {
+    ${v.dashboard.name} = {
+      href = "http://${v.sub}.${d}${v.dashboard.path}";
+      description = v.dashboard.description;
+    };
+  };
+  groups = lib.unique (map (v: v.dashboard.group) sorted);
+  mkGroup = g: {
+    ${g} = map mkTile (lib.filter (v: v.dashboard.group == g) sorted);
+  };
 in
 {
   options.mySystem.services.homepage = {
@@ -20,15 +39,15 @@ in
       default = 8082;
       description = "Listen port (bound by the upstream module; reached through Caddy)";
     };
-
-    domain = lib.mkOption {
-      type = lib.types.str;
-      default = "homelab";
-      description = "Internal suffix used to build service links (must match Caddy)";
-    };
   };
 
   config = lib.mkIf cfg.enable {
+    # Homepage is itself proxied as home.<domain> (no tile for itself).
+    mySystem.proxy.vhosts.homepage = {
+      sub = "home";
+      upstream = "127.0.0.1:${toString cfg.port}";
+    };
+
     services.homepage-dashboard = {
       enable = true;
       listenPort = cfg.port;
@@ -76,42 +95,8 @@ in
         }
       ];
 
-      services = [
-        {
-          Services = builtins.concatLists [
-            (lib.optional (has "open-webui") {
-              "Open WebUI" = {
-                href = "http://ai.${d}";
-                description = "Ollama chat frontend";
-              };
-            })
-            (lib.optional (has "pihole") {
-              "Pi-hole" = {
-                href = "http://dns.${d}/admin";
-                description = "DNS / adblock";
-              };
-            })
-            (lib.optional (has "syncthing") {
-              "Syncthing" = {
-                href = "http://sync.${d}";
-                description = "File sync";
-              };
-            })
-            (lib.optional ((svc ? beszel) && svc.beszel.hub.enable) {
-              "Beszel" = {
-                href = "http://stats.${d}";
-                description = "Metrics & GPU";
-              };
-            })
-            (lib.optional (has "cgit") {
-              "cgit" = {
-                href = "http://git.${d}";
-                description = "Git repositories";
-              };
-            })
-          ];
-        }
-      ];
+      # Dashboard tiles, folded from the proxy registry (see mkGroup above).
+      services = map mkGroup groups;
 
       customCSS = ''
         /* Catppuccin Mocha — override homepage's gray palette (R G B triplets) */

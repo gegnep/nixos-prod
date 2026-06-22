@@ -72,5 +72,16 @@ in
       ];
       allowedUDPPorts = [ 53 ];
     };
+
+    mySystem.proxy.vhosts.pihole = {
+      sub = "dns";
+      upstream = "127.0.0.1:${toString cfg.webPort}";
+      dashboard = {
+        name = "Pi-hole";
+        description = "DNS / adblock";
+        path = "/admin";
+        order = 20;
+      };
+    };
   };
 }

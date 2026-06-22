@@ -30,5 +30,10 @@ in
       openRegistration = cfg.openRegistration;
       database.createLocally = true;
     };
+
+    mySystem.proxy.vhosts.atuin = {
+      sub = "atuin";
+      upstream = "127.0.0.1:${toString cfg.port}";
+    };
   };
 }

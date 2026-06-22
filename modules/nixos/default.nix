@@ -21,6 +21,7 @@ in
 {
   imports = [
     ./_lib/notify.nix
+    ./_lib/proxy.nix
   ]
   ++ lib.filter keep (lib.filesystem.listFilesRecursive ./.);
 }

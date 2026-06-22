@@ -6,41 +6,24 @@
 
 let
   cfg = config.mySystem.services.caddy;
-  svc = config.mySystem.services;
-  d = cfg.domain;
-
-  has = n: (svc ? ${n}) && svc.${n}.enable;
-
-  vhost = name: port: {
-    "http://${name}.${d}".extraConfig = "reverse_proxy 127.0.0.1:${toString port}";
-  };
+  proxy = config.mySystem.proxy;
 in
 {
-  options.mySystem.services.caddy = {
-    enable = lib.mkEnableOption "Caddy reverse proxy (name-based routing for homelab services)";
-
-    domain = lib.mkOption {
-      type = lib.types.str;
-      default = "homelab";
-      description = ''
-        Internal suffix. Services are served as <name>.<domain>. These names must
-        resolve to this host — add a wildcard record in Pi-hole (see module comment).
-      '';
-    };
-  };
+  options.mySystem.services.caddy.enable =
+    lib.mkEnableOption "Caddy reverse proxy (folds the mySystem.proxy.vhosts registry)";
 
   config = lib.mkIf cfg.enable {
     services.caddy = {
       enable = true;
 
-      virtualHosts =
-        lib.optionalAttrs (has "homepage") (vhost "home" svc.homepage.port)
-        // lib.optionalAttrs (has "open-webui") (vhost "ai" svc.open-webui.port)
-        // lib.optionalAttrs (has "pihole") (vhost "dns" svc.pihole.webPort)
-        // lib.optionalAttrs (has "syncthing") (vhost "sync" svc.syncthing.guiPort)
-        // lib.optionalAttrs ((svc ? beszel) && svc.beszel.hub.enable) (vhost "stats" svc.beszel.hub.port)
-        // lib.optionalAttrs (has "ntfy") (vhost "ntfy" svc.ntfy.port)
-        // lib.optionalAttrs (has "atuin") (vhost "atuin" svc.atuin.port);
+      # Sole writer of virtualHosts: one vhost per registry entry. A plain entry
+      # becomes `reverse_proxy <upstream>`; an entry with rawConfig uses it verbatim.
+      virtualHosts = lib.mapAttrs' (
+        _: v:
+        lib.nameValuePair "http://${v.sub}.${proxy.domain}" {
+          extraConfig = if v.rawConfig != "" then v.rawConfig else "reverse_proxy ${v.upstream}";
+        }
+      ) proxy.vhosts;
     };
 
     networking.firewall.allowedTCPPorts = [ 80 ];

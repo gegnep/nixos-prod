@@ -7,6 +7,7 @@
 
 let
   cfg = config.mySystem.services.cgit;
+  domain = config.mySystem.proxy.domain;
   sock = config.services.fcgiwrap.instances.cgit.socket.address;
 
   pyEnv = pkgs.python3.withPackages (
@@ -78,18 +79,12 @@ let
     max-stats=year
     cache-size=0
 
-    clone-url=ssh://${cfg.sshUser}@git.${cfg.domain}${cfg.repoDir}/$CGIT_REPO_URL.git
+    clone-url=ssh://${cfg.sshUser}@git.${domain}${cfg.repoDir}/$CGIT_REPO_URL.git
   '';
 in
 {
   options.mySystem.services.cgit = {
     enable = lib.mkEnableOption "cgit read-only git web frontend";
-
-    domain = lib.mkOption {
-      type = lib.types.str;
-      default = "homelab";
-      description = "Served as git.<domain> via Caddy (matches the Pi-hole *.homelab wildcard).";
-    };
 
     repoDir = lib.mkOption {
       type = lib.types.str;
@@ -147,26 +142,37 @@ in
       }; # caddy owns the socket so it can connect
     };
 
-    services.caddy.virtualHosts."http://git.${cfg.domain}".extraConfig = ''
-      handle /theme.css {
-        root * ${themeDir}
-        file_server
-      }
-      @asset path /cgit.png /cgit.js /favicon.ico /robots.txt
-      handle @asset {
-        root * ${cfg.package}/cgit
-        file_server
-      }
-      handle {
-        reverse_proxy unix/${sock} {
-          transport fastcgi {
-            env SCRIPT_FILENAME ${cfg.package}/cgit/cgit.cgi
-            env CGIT_CONFIG ${cgitrc}
-            env PATH_INFO {http.request.uri.path}
-            env QUERY_STRING {http.request.uri.query}
+    # cgit keeps its bespoke fastcgi + static-asset block, but routes it through the
+    # proxy registry (rawConfig) instead of writing services.caddy.virtualHosts directly,
+    # so Caddy stays the sole writer of virtualHosts.
+    mySystem.proxy.vhosts.cgit = {
+      sub = "git";
+      dashboard = {
+        name = "cgit";
+        description = "Git repositories";
+        order = 50;
+      };
+      rawConfig = ''
+        handle /theme.css {
+          root * ${themeDir}
+          file_server
+        }
+        @asset path /cgit.png /cgit.js /favicon.ico /robots.txt
+        handle @asset {
+          root * ${cfg.package}/cgit
+          file_server
+        }
+        handle {
+          reverse_proxy unix/${sock} {
+            transport fastcgi {
+              env SCRIPT_FILENAME ${cfg.package}/cgit/cgit.cgi
+              env CGIT_CONFIG ${cgitrc}
+              env PATH_INFO {http.request.uri.path}
+              env QUERY_STRING {http.request.uri.query}
+            }
           }
         }
-      }
-    '';
+      '';
+    };
   };
 }

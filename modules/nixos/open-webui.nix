@@ -37,5 +37,15 @@ in
     systemd.services.open-webui.serviceConfig.EnvironmentFile =
       config.sops.templates."open-webui.env".path;
     networking.firewall.interfaces."tailscale0".allowedTCPPorts = [ cfg.port ];
+
+    mySystem.proxy.vhosts.open-webui = {
+      sub = "ai";
+      upstream = "127.0.0.1:${toString cfg.port}";
+      dashboard = {
+        name = "Open WebUI";
+        description = "Ollama chat frontend";
+        order = 10;
+      };
+    };
   };
 }

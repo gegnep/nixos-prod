@@ -48,5 +48,15 @@ in
         # folders = { };
       };
     };
+
+    mySystem.proxy.vhosts.syncthing = {
+      sub = "sync";
+      upstream = "127.0.0.1:${toString cfg.guiPort}";
+      dashboard = {
+        name = "Syncthing";
+        description = "File sync";
+        order = 30;
+      };
+    };
   };
 }

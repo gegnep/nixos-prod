@@ -35,5 +35,10 @@ in
     };
 
     networking.firewall.interfaces."tailscale0".allowedTCPPorts = [ cfg.port ];
+
+    mySystem.proxy.vhosts.ntfy = {
+      sub = "ntfy";
+      upstream = "127.0.0.1:${toString cfg.port}";
+    };
   };
 }
