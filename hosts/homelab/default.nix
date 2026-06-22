@@ -45,6 +45,7 @@
       };
       restic.enable = true;
       cgit.enable = true;
+      unifi-backup.enable = true;
     };
   };
 }

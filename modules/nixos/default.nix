@@ -26,5 +26,6 @@
     ./atuin.nix
     ./restic.nix
     ./cgit.nix
+    ./unifi-backup.nix
   ];
 }
