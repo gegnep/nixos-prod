@@ -35,9 +35,7 @@ in
   config = lib.mkIf cfg.enable {
     services.resolved.settings.Resolve.DNSStubListener = "no";
 
-    virtualisation.podman.enable = lib.mkDefault true;
-    virtualisation.oci-containers.backend = lib.mkDefault "podman";
-
+    # podman + oci backend live in virtualisation.nix (shared container runtime).
     virtualisation.oci-containers.containers.pihole = {
       image = cfg.image;
       autoStart = true;
