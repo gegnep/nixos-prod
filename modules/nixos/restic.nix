@@ -1,7 +1,7 @@
 {
   config,
   lib,
-  pkgs,
+  mkFailureUnit,
   ...
 }:
 
@@ -76,17 +76,12 @@ in
     };
 
     systemd.services."restic-backups-b2".onFailure = [ "notify-restic-fail.service" ];
-    systemd.services.notify-restic-fail = {
-      description = "Notify ntfy that the restic B2 backup failed";
-      serviceConfig.Type = "oneshot";
-      script = ''
-        ${pkgs.curl}/bin/curl -fsS \
-          -H "Title: restic B2 backup FAILED on ${config.networking.hostName}" \
-          -H "Priority: urgent" \
-          -H "Tags: rotating_light,floppy_disk" \
-          -d "Offsite backup failed. Check: journalctl -u restic-backups-b2" \
-          http://127.0.0.1:2586/homelab-alerts >/dev/null || true
-      '';
+    systemd.services.notify-restic-fail = mkFailureUnit {
+      name = "restic";
+      title = "restic B2 backup FAILED on ${config.networking.hostName}";
+      priority = "urgent";
+      tags = "rotating_light,floppy_disk";
+      body = "Offsite backup failed. Check: journalctl -u restic-backups-b2";
     };
   };
 }

@@ -18,25 +18,12 @@ let
       -H "Priority: urgent" \
       -H "Tags: rotating_light,floppy_disk" \
       --data-binary "$body" \
-      "${cfg.ntfyUrl}/${cfg.ntfyTopic}" >/dev/null || true
+      "${config.mySystem.notify.url}/${config.mySystem.notify.topic}" >/dev/null || true
   '';
 in
 {
-  options.mySystem.services.smartd = {
-    enable = lib.mkEnableOption "smartd SMART disk health monitoring";
-
-    ntfyUrl = lib.mkOption {
-      type = lib.types.str;
-      default = "http://127.0.0.1:2586";
-      description = "Base URL the ntfy server alerts are sent to (local by default)";
-    };
-
-    ntfyTopic = lib.mkOption {
-      type = lib.types.str;
-      default = "homelab-alerts";
-      description = "ntfy topic for SMART alerts";
-    };
-  };
+  options.mySystem.services.smartd.enable =
+    lib.mkEnableOption "smartd SMART disk health monitoring";
 
   config = lib.mkIf cfg.enable {
     services.smartd = {

@@ -3,6 +3,7 @@
   config,
   lib,
   pkgs,
+  mkFailureUnit,
   ...
 }:
 let
@@ -69,17 +70,12 @@ in
       };
     };
 
-    systemd.services.notify-unifi-backup-fail = {
-      description = "Notify ntfy that the UniFi backup pull failed";
-      serviceConfig.Type = "oneshot";
-      script = ''
-        ${pkgs.curl}/bin/curl -fsS \
-          -H "Title: UniFi backup pull FAILED on ${config.networking.hostName}" \
-          -H "Priority: high" \
-          -H "Tags: rotating_light,satellite" \
-          -d "Could not pull .unf autobackups from ${cfg.host}. Check: journalctl -u unifi-backup" \
-          http://127.0.0.1:2586/homelab-alerts >/dev/null || true
-      '';
+    systemd.services.notify-unifi-backup-fail = mkFailureUnit {
+      name = "unifi-backup";
+      title = "UniFi backup pull FAILED on ${config.networking.hostName}";
+      priority = "high";
+      tags = "rotating_light,satellite";
+      body = "Could not pull .unf autobackups from ${cfg.host}. Check: journalctl -u unifi-backup";
     };
   };
 }

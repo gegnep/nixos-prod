@@ -19,5 +19,8 @@ let
     && !(lib.hasInfix "/_" s); # skip _lib/ and _-prefixed scratch files
 in
 {
-  imports = lib.filter keep (lib.filesystem.listFilesRecursive ./.);
+  imports = [
+    ./_lib/notify.nix
+  ]
+  ++ lib.filter keep (lib.filesystem.listFilesRecursive ./.);
 }
