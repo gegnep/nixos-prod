@@ -22,8 +22,7 @@ let
   '';
 in
 {
-  options.mySystem.services.smartd.enable =
-    lib.mkEnableOption "smartd SMART disk health monitoring";
+  options.mySystem.services.smartd.enable = lib.mkEnableOption "smartd SMART disk health monitoring";
 
   config = lib.mkIf cfg.enable {
     services.smartd = {
