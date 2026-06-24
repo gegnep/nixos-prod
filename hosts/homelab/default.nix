@@ -70,7 +70,7 @@
           }
           {
             name = "logistics-insights";
-            version = "1.1.2";
+            version = "1.1.3";
           }
           {
             name = "long_stack_inserter";
@@ -79,6 +79,10 @@
           {
             name = "mining-patch-planner";
             version = "1.7.20";
+          }
+          {
+            name = "OilOutpostPlanner";
+            version = "1.7.0";
           }
           {
             name = "MoreTooltips";
@@ -99,6 +103,30 @@
           {
             name = "aai-loaders";
             version = "0.3.0";
+          }
+          {
+            name = "aai-containers";
+            version = "0.4.0";
+          }
+          {
+            name = "bullet-trails";
+            version = "0.8.0";
+          }
+          {
+            name = "textplates";
+            version = "0.8.0";
+          }
+          {
+            name = "EditorExtensions";
+            version = "2.6.0";
+          }
+          {
+            name = "rz-quality-labs";
+            version = "0.3.0";
+          }
+          {
+            name = "Better_Starmap_Background";
+            version = "2.4.0";
           }
           {
             name = "Wr_Enhanced_Map_Colors";
