@@ -63,7 +63,7 @@
           }
           {
             name = "flib";
-            version = "0.17.1";
+            version = "0.17.2";
           }
           {
             name = "FlatUI";
@@ -144,6 +144,10 @@
           {
             name = "tree-healing";
             version = "1.2.2";
+          }
+          {
+            name = "LogisticTrainNetwork";
+            version = "3.0.0";
           }
         ];
       };

@@ -16,11 +16,11 @@ let
   factorioVersions =
     let
       dist = {
-        name = "factorio_headless_x64-2.1.7.tar.xz";
-        version = "2.1.7";
+        name = "factorio_headless_x64-2.1.8.tar.xz";
+        version = "2.1.8";
         tarDirectory = "x64";
-        url = "https://factorio.com/get-download/2.1.7/headless/linux64";
-        sha256 = "2a8d66db3566a2ed54787031f68103cad19ab480b41a7042310ccbd52c0ffbc4";
+        url = "https://factorio.com/get-download/2.1.8/headless/linux64";
+        sha256 = "16b122cd5f48118cd44bcaf1d27fd933aea60b9902bbd426fd26359440759f12";
         needsAuth = false;
       };
     in
