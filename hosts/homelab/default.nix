@@ -132,6 +132,18 @@
             name = "Wr_Enhanced_Map_Colors";
             version = "1.5.11";
           }
+          {
+            name = "vtk-armor-reach";
+            version = "2.0.1";
+          }
+          {
+            name = "even-distribution";
+            version = "2.1.0";
+          }
+          {
+            name = "tree-healing";
+            version = "1.2.2";
+          }
         ];
       };
     };
