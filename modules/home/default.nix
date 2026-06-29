@@ -68,6 +68,7 @@
     nmap
     ipcalc
 
+    ghostty
     cowsay
     fastfetch
 

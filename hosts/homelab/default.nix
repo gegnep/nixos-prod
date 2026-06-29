@@ -119,7 +119,7 @@
           }
           {
             name = "EditorExtensions";
-            version = "2.6.0";
+            version = "2.6.1";
           }
           {
             name = "rz-quality-labs";
@@ -148,6 +148,64 @@
           {
             name = "LogisticTrainNetwork";
             version = "3.0.0";
+          }
+          {
+            name = "LTN_Combinator_Modernized";
+            version = "2.5.0";
+          }
+          {
+            name = "black-rubber-belts-remastered";
+            version = "2.3.8";
+          }
+          #{ name = "PlanetsLib"; version = "1.19.2"; }
+          #{ name = "Planet-Hopper"; version = "4.2.0"; }
+          {
+            name = "RealisticDecorationCleanup";
+            version = "2.1.1";
+          }
+          {
+            name = "galore_lib";
+            version = "2.2.1";
+          }
+          {
+            name = "vanilla_galore_continued";
+            version = "1.4.3";
+          }
+          {
+            name = "space_age_galore";
+            version = "1.6.4";
+          }
+          {
+            name = "science-tab";
+            version = "1.12.1";
+          }
+          {
+            name = "Age-of-Production";
+            version = "2.1.2";
+          }
+          {
+            name = "Age-of-Production-Graphics";
+            version = "2.1.0";
+          }
+          {
+            name = "CleanedConcrete";
+            version = "2.1.0";
+          }
+          {
+            name = "PlanetsLib";
+            version = "1.19.3";
+          }
+          {
+            name = "lightorio";
+            version = "2.1.0";
+          }
+          {
+            name = "Waterfill_v17";
+            version = "2.1.0";
+          }
+          {
+            name = "hazard-concrete-recycling";
+            version = "1.0.0";
           }
         ];
       };
