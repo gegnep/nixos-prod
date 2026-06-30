@@ -127,7 +127,7 @@
           }
           {
             name = "Better_Starmap_Background";
-            version = "2.4.0";
+            version = "2.4.1";
           }
           {
             name = "Wr_Enhanced_Map_Colors";
@@ -157,8 +157,6 @@
             name = "black-rubber-belts-remastered";
             version = "2.3.8";
           }
-          #{ name = "PlanetsLib"; version = "1.19.2"; }
-          #{ name = "Planet-Hopper"; version = "4.2.0"; }
           {
             name = "RealisticDecorationCleanup";
             version = "2.1.1";
@@ -181,7 +179,7 @@
           }
           {
             name = "Age-of-Production";
-            version = "2.1.2";
+            version = "2.1.3";
           }
           {
             name = "Age-of-Production-Graphics";
@@ -193,7 +191,7 @@
           }
           {
             name = "PlanetsLib";
-            version = "1.19.3";
+            version = "1.19.5";
           }
           {
             name = "lightorio";
@@ -207,6 +205,14 @@
             name = "hazard-concrete-recycling";
             version = "1.0.0";
           }
+          {
+            name = "StorageTank2_2_0";
+            version = "1.3.0";
+          }
+          #{
+          #  name = "Planet-Hopper";
+          #  version = "4.2.1";
+          #}
         ];
       };
     };
