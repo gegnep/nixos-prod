@@ -19,6 +19,7 @@
     services = {
       pihole.enable = true;
       buildServer.enable = true;
+      flake-builder.enable = true;
       syncthing.enable = true;
       ollama.enable = true;
       open-webui = {
