@@ -138,5 +138,8 @@ in
     services.restic.backups.b2.paths = lib.mkIf config.mySystem.services.restic.enable [
       cfg.dataDir
     ];
+    services.restic.backups.b2.exclude = lib.mkIf config.mySystem.services.restic.enable [
+      "${cfg.dataDir}/.cache"
+    ];
   };
 }
