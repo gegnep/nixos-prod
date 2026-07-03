@@ -46,6 +46,10 @@
         openRegistration = true;
       };
       restic.enable = true;
+      resticServer = {
+        enable = true;
+        port = 8010;
+      };
       cgit.enable = true;
       unifi-backup.enable = true;
       factorio = {
