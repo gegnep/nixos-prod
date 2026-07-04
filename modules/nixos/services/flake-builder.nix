@@ -55,16 +55,37 @@ in
       default = "04:00";
       description = "When to check upstream. Off-hours so it doesn't race your manual commits.";
     };
+
+    issueRepo = lib.mkOption {
+      type = lib.types.str;
+      default = "gegnep/nixos";
+      description = "owner/repo that gets a GitHub issue when a run fails.";
+    };
+
+    issueLabels = lib.mkOption {
+      type = lib.types.listOf lib.types.str;
+      default = [
+        "automated"
+        "flake-builder"
+      ];
+      description = "Labels on the failure issue. Must already exist in the repo or creation fails.";
+    };
   };
 
   config = lib.mkIf cfg.enable {
     sops.secrets.flake-builder-deploy-key = { };
+    # fine-grained PAT, ${cfg.issueRepo} only, Issues: read+write. The deploy
+    # key can't touch the issues API, so this is a separate credential.
+    sops.secrets.flake-builder-github-token = { };
 
     systemd.tmpfiles.rules = [ "d ${cfg.localPath} 0700 root root -" ];
 
     systemd.services.flake-builder = {
       description = "Bump the desktop flake.lock, build ${lib.concatStringsSep "+" cfg.hosts}, then push";
-      onFailure = [ "notify-flake-builder-fail.service" ];
+      onFailure = [
+        "notify-flake-builder-fail.service"
+        "flake-builder-issue.service"
+      ];
       path = with pkgs; [
         git
         openssh
@@ -154,6 +175,44 @@ in
         Persistent = true;
         RandomizedDelaySec = "20min";
       };
+    };
+
+    # Second onFailure hook next to the ntfy one: a GitHub issue is visible
+    # off-tailnet and feeds the desktop repo's nightly Claude scan.
+    systemd.services.flake-builder-issue = {
+      description = "File a GitHub issue for a failed flake-builder run";
+      path = with pkgs; [
+        gh
+        coreutils
+        systemd
+      ];
+      serviceConfig.Type = "oneshot";
+      script = ''
+        set -euo pipefail
+        export GH_TOKEN="$(cat ${config.sops.secrets.flake-builder-github-token.path})"
+        labels=${lib.escapeShellArg (lib.concatStringsSep "," cfg.issueLabels)}
+
+        log="$(journalctl -u flake-builder -n 60 --no-pager 2>/dev/null || echo 'journal unavailable')"
+        body="Nightly run failed on ${config.networking.hostName}. The lock was NOT advanced — ${lib.concatStringsSep "+" cfg.hosts} stay on the last-good lock.
+
+        Last 60 journal lines (full log: \`journalctl -u flake-builder\` on ${config.networking.hostName}):
+
+        \`\`\`text
+        $log
+        \`\`\`"
+
+        # one open issue at a time: while it stays broken, append instead of spamming
+        n="$(gh issue list --repo ${cfg.issueRepo} --label "$labels" --state open \
+              --json number --jq '.[0].number // empty')"
+        if [ -n "$n" ]; then
+          gh issue comment "$n" --repo ${cfg.issueRepo} --body "$body"
+        else
+          gh issue create --repo ${cfg.issueRepo} \
+            --title "flake-builder: nightly build failed ($(date -I))" \
+            --label "$labels" \
+            --body "$body"
+        fi
+      '';
     };
 
     systemd.services.notify-flake-builder-fail = mkFailureUnit {
