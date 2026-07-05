@@ -26,7 +26,7 @@
         enable = true;
         port = 3000;
       };
-      mcp-nixos.enable = true;
+      mcp-nixos.enable = false;
       smartd.enable = true;
       ntfy.enable = true;
       caddy.enable = true;
