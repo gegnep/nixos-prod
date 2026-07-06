@@ -218,6 +218,14 @@
           #  name = "Planet-Hopper";
           #  version = "4.2.1";
           #}
+          {
+            name = "let-me-laser-down-asteroids";
+            version = "1.0.5";
+          }
+          {
+            name = "quality-upgrade-planner";
+            version = "2.8.1";
+          }
         ];
       };
     };
