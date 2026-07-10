@@ -27,6 +27,21 @@
 
   nixpkgs.config.allowUnfree = true;
 
+  nixpkgs.overlays = [
+    (final: prev: {
+      pythonPackagesExtensions = prev.pythonPackagesExtensions ++ [
+        (pyFinal: pyPrev: {
+          # frictionless's checkPhase drifted from pandas 2.3.3/numpy dtype +
+          # charset-normalizer behavior after the 2026-06-27 py3.14 bump.
+          # Upstream fix not landed. doCheck=false only — no source patch.
+          frictionless = pyPrev.frictionless.overridePythonAttrs (_: {
+            doCheck = false;
+          });
+        })
+      ];
+    })
+  ];
+
   programs.nh = {
     enable = true;
     flake = "/home/pengeg/nixos";
