@@ -168,23 +168,23 @@
           }
           {
             name = "galore_lib";
-            version = "2.2.1";
+            version = "2.2.2";
           }
           {
             name = "vanilla_galore_continued";
-            version = "1.4.3";
+            version = "1.4.4";
           }
           {
             name = "space_age_galore";
-            version = "1.6.4";
+            version = "1.6.5";
           }
           {
             name = "science-tab";
-            version = "1.12.1";
+            version = "1.12.2";
           }
           {
             name = "Age-of-Production";
-            version = "2.1.3";
+            version = "2.1.4";
           }
           {
             name = "Age-of-Production-Graphics";
@@ -196,7 +196,7 @@
           }
           {
             name = "PlanetsLib";
-            version = "1.19.5";
+            version = "1.21.1";
           }
           {
             name = "lightorio";
