@@ -18,6 +18,10 @@
       nfs.enable = true;
       scrub.enable = true;
     };
+    network = {
+      uplink = "enp34s0";
+      tailscale.exitNode = true;
+    };
     hardware = {
       nvidia.enable = true;
     };
