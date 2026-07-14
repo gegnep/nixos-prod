@@ -81,5 +81,13 @@ in
         renders a tile for entries whose dashboard != null.
       '';
     };
+
+    tls = lib.mkEnableOption "ACME TLS: vhosts become https://<sub>.<domain> (public hosts). Off = plain-HTTP internal vhosts.";
+
+    acmeEmail = lib.mkOption {
+      type = lib.types.nullOr lib.types.str;
+      default = null;
+      description = "ACME account email passed to Caddy; recommended when tls is on.";
+    };
   };
 }

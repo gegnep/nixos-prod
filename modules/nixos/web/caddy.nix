@@ -15,17 +15,16 @@ in
   config = lib.mkIf cfg.enable {
     services.caddy = {
       enable = true;
+      email = proxy.acmeEmail;
 
-      # Sole writer of virtualHosts: one vhost per registry entry. A plain entry
-      # becomes `reverse_proxy <upstream>`; an entry with rawConfig uses it verbatim.
       virtualHosts = lib.mapAttrs' (
         _: v:
-        lib.nameValuePair "http://${v.sub}.${proxy.domain}" {
-          extraConfig = if v.rawConfig != "" then v.rawConfig else "reverse_proxy ${v.upstream}";
-        }
+        lib.nameValuePair (
+          if proxy.tls then "${v.sub}.${proxy.domain}" else "http://${v.sub}.${proxy.domain}"
+        ) { extraConfig = if v.rawConfig != "" then v.rawConfig else "reverse_proxy ${v.upstream}"; }
       ) proxy.vhosts;
     };
 
-    networking.firewall.allowedTCPPorts = [ 80 ];
+    networking.firewall.allowedTCPPorts = [ 80 ] ++ lib.optional proxy.tls 443;
   };
 }
