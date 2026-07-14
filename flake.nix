@@ -40,12 +40,13 @@
       mkHost =
         {
           hostname,
+          system ? "x86_64-linux",
           extraModules ? [ ],
         }:
         nixpkgs.lib.nixosSystem {
           specialArgs = { inherit inputs; };
           modules = [
-            { nixpkgs.hostPlatform = "x86_64-linux"; }
+            { nixpkgs.hostPlatform = system; }
             ./hosts/${hostname}
             inputs.disko.nixosModules.disko
             inputs.sops-nix.nixosModules.sops
@@ -72,6 +73,14 @@
     {
       nixosConfigurations = {
         homelab = mkHost { hostname = "homelab"; };
+        ovh = mkHost {
+          hostname = "ovh";
+          system = "aarch64-linux";
+        };
+        oracle = mkHost {
+          hostname = "oracle";
+          system = "aarch64-linux";
+        };
       };
     };
 }
