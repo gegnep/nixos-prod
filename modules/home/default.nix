@@ -116,6 +116,7 @@
   programs.fzf = {
     enable = true;
     enableZshIntegration = true;
+    historyWidget.command = "";
   };
   catppuccin.fzf.enable = true;
 
