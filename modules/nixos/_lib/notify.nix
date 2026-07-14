@@ -37,7 +37,7 @@
       serviceConfig.Type = "oneshot";
       script = ''
         ${pkgs.curl}/bin/curl -fsS \
-          -H "Title: ${title}" \
+          -H "Title: [${config.networking.hostName}] ${title}" \
           -H "Priority: ${priority}" \
           -H "Tags: ${tags}" \
           -d "${body}" \
