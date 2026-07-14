@@ -33,6 +33,12 @@ in
   };
 
   config = lib.mkIf cfg.enable {
+    sops.secrets.pihole-webpassword = { };
+    sops.templates."pihole.env" = {
+      content = "FTLCONF_webserver_api_password=${config.sops.placeholder.pihole-webpassword}";
+      restartUnits = [ "podman-pihole.service" ];
+    };
+
     services.resolved.settings.Resolve.DNSStubListener = "no";
 
     # podman + oci backend live in virtualisation.nix (shared container runtime).

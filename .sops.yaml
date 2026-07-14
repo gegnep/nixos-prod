@@ -1,9 +1,12 @@
 keys:
-  - &host_homelab age1ge4mdmvw4xd6qsfd340whgc9ka3u4d0n90erjasllxacz4x0x9jsgasw06
-  - &user_pengeg  age18eysze6z0tzvqra254656ufvkgty82203dwlz0eggkant49cdqtsq4fvak
+  - &homelab age1ge4mdmvw4xd6qsfd340whgc9ka3u4d0n90erjasllxacz4x0x9jsgasw06
+  - &pengeg  age18eysze6z0tzvqra254656ufvkgty82203dwlz0eggkant49cdqtsq4fvak
+  - &ovh     age17l0ljqnaew3xs4565937dp5sp4q8tjp5lajl669las2qtupxeawshk56d2
+  - &oracle  age1fvdx8zlt7qn7kuevd7tdsjm6swl90xtz0df4tmvvc8en2pfurprq9a6rd5
 creation_rules:
-  - path_regex: secrets/[^/]+\.yaml$
-    key_groups:
-      - age:
-          - *host_homelab
-          - *user_pengeg
+  - path_regex: secrets/homelab\.yaml$
+    key_groups: [{ age: [*pengeg, *homelab] }]
+  - path_regex: secrets/ovh\.yaml$
+    key_groups: [{ age: [*pengeg, *ovh] }]
+  - path_regex: secrets/oracle\.yaml$
+    key_groups: [{ age: [*pengeg, *oracle] }]

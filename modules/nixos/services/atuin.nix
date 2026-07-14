@@ -23,6 +23,8 @@ in
   };
 
   config = lib.mkIf cfg.enable {
+    sops.secrets.atuin-key.owner = "pengeg";
+
     services.atuin = {
       enable = true;
       host = "127.0.0.1";

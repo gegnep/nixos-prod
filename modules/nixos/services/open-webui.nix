@@ -19,6 +19,12 @@ in
   };
 
   config = lib.mkIf cfg.enable {
+    sops.secrets.open-webui-secret-key = { };
+    sops.templates."open-webui.env" = {
+      content = "WEBUI_SECRET_KEY=${config.sops.placeholder.open-webui-secret-key}";
+      restartUnits = [ "open-webui.service" ];
+    };
+
     services.open-webui = {
       enable = true;
       package = pkgs.open-webui;

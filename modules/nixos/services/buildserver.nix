@@ -8,6 +8,10 @@ in
     lib.mkEnableOption "Remote build server + Binary cache";
 
   config = lib.mkIf cfg.enable {
+    sops.secrets.harmonia-cache-key = {
+      restartUnits = [ "harmonia.service" ];
+    };
+
     users.users.nixremote = {
       isNormalUser = true;
       description = "Remote Nix build user";
