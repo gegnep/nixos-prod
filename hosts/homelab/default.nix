@@ -13,6 +13,11 @@
 
   mySystem = {
     backup.mountPoint = "/backup";
+    storage = {
+      snapshots.enable = true;
+      nfs.enable = true;
+      scrub.enable = true;
+    };
     hardware = {
       nvidia.enable = true;
     };
