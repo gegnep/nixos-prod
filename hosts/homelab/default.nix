@@ -26,6 +26,7 @@
     };
     hardware = {
       nvidia.enable = true;
+      intel.enable = true;
     };
     services = {
       pihole.enable = true;
