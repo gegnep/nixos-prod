@@ -16,7 +16,6 @@
     efi.canTouchEfiVariables = lib.mkForce false;
     grub = {
       enable = lib.mkForce true;
-      device = "/dev/sda";
     };
   };
 
