@@ -73,10 +73,7 @@
     {
       nixosConfigurations = {
         homelab = mkHost { hostname = "homelab"; };
-        ovh = mkHost {
-          hostname = "ovh";
-          system = "aarch64-linux";
-        };
+        ovh = mkHost { hostname = "ovh"; };
         oracle = mkHost {
           hostname = "oracle";
           system = "aarch64-linux";

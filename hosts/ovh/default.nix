@@ -1,4 +1,4 @@
-{ ... }:
+{ lib, ... }:
 
 {
   imports = [
@@ -9,7 +9,16 @@
 
   networking.hostName = "ovh";
   system.stateVersion = "26.05";
-  boot.kernelParams = [ "console=ttyAMA0,115200" ]; # OVH KVM/rescue console
+
+  boot.kernelParams = [ "console=ttyS0,115200" ]; # OVH KVM/rescue console
+  boot.loader = {
+    systemd-boot.enable = lib.mkForce false;
+    efi.canTouchEfiVariables = lib.mkForce false;
+    grub = {
+      enable = lib.mkForce true;
+      device = "/dev/sda";
+    };
+  };
 
   mySystem = {
     notify.url = "http://100.68.176.20:2586";
