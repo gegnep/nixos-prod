@@ -13,7 +13,7 @@ in
 
     port = lib.mkOption {
       type = lib.types.port;
-      default = 8000;
+      default = 8100;
     };
 
     url = lib.mkOption {
