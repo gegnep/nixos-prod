@@ -62,6 +62,11 @@
       resticServer = {
         enable = true;
         port = 8010;
+        clients = [
+          "blackbox"
+          "nixpad"
+          "ovh"
+        ];
       };
       cgit.enable = true;
       unifi-backup.enable = true;

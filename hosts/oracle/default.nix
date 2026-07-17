@@ -19,6 +19,8 @@
 
     storage.scrub.enable = true;
 
-    services = { };
+    services = {
+      fail2ban.enable = true;
+    };
   };
 }

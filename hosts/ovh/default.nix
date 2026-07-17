@@ -36,6 +36,14 @@
         funnel = false;
       };
       rustypaste.enable = true;
+      fail2ban.enable = true;
+      resticClient = {
+        enable = true;
+        paths = [
+          "/var/lib/rustypaste"
+          "/var/lib/acme"
+        ];
+      };
     };
   };
 }
