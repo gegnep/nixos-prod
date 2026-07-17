@@ -1,0 +1,179 @@
+<!DOCTYPE html>
+<html lang="en">
+	<head>
+		<meta charset="utf-8">
+		<meta name="viewport" content="width=device-width, initial-scale=1">
+		<meta name="robots" content="noindex">
+		<title>p.pengeg.com</title>
+		<style>
+			/* catppuccin mocha */
+			:root {
+				--base: #1e1e2e; --mantle: #181825; --crust: #11111b;
+				--surface0: #313244; --surface1: #45475a;
+				--text: #cdd6f4; --subtext: #a6adc8; --overlay: #6c7086;
+				--mauve: #cba6f7; --green: #a6e3a1; --red: #f38ba8; --blue: #89b4fa;
+			}
+			* { box-sizing: border-box; }
+			body {
+				margin: 0; min-height: 100vh; background: var(--base); color: var(--text);
+				font-family: ui-monospace, "JetBrainsMono Nerd Font", "JetBrains Mono", Menlo, monospace;
+				display: flex; flex-direction: column; align-items: center;
+				padding: 2rem 1rem; gap: 1rem;
+			}
+			h1 { font-size: 1.1rem; font-weight: 600; margin: 0; color: var(--mauve); }
+			h1 span { color: var(--overlay); font-weight: 400; }
+			#drop {
+				width: 100%; max-width: 480px; border: 2px dashed var(--surface1);
+				border-radius: 12px; background: var(--mantle); padding: 2.5rem 1rem;
+				text-align: center; color: var(--subtext); cursor: pointer;
+				transition: border-color .15s, background .15s;
+			}
+			#drop.hover { border-color: var(--mauve); background: var(--surface0); }
+			#drop strong { color: var(--text); display: block; margin-bottom: .35rem; }
+			#file { display: none; }
+			.row { display: flex; gap: .5rem; width: 100%; max-width: 480px; align-items: center; }
+			.row label { color: var(--subtext); flex-shrink: 0; }
+			select, input[type=password], button {
+				background: var(--surface0); color: var(--text); border: 1px solid var(--surface1);
+				border-radius: 8px; padding: .5rem .75rem; font: inherit;
+			}
+			select { flex: 1; }
+			input[type=password] { flex: 1; min-width: 0; }
+			#results { width: 100%; max-width: 480px; display: flex; flex-direction: column; gap: .5rem; }
+			.result {
+				background: var(--mantle); border: 1px solid var(--surface0); border-radius: 8px;
+				padding: .6rem .75rem; display: flex; align-items: center; gap: .6rem;
+				font-size: .85rem; word-break: break-all;
+			}
+			.result a { color: var(--blue); text-decoration: none; flex: 1; }
+			.result.ok { border-left: 3px solid var(--green); }
+			.result.err { border-left: 3px solid var(--red); color: var(--red); }
+			.result.uploading { border-left: 3px solid var(--blue); color: var(--subtext); }
+			.result .copy { padding: .25rem .5rem; font-size: .75rem; flex-shrink: 0; cursor: pointer; }
+			.result .copy:active { background: var(--surface1); }
+			footer { color: var(--overlay); font-size: .75rem; margin-top: auto; padding-top: 1.5rem; text-align: center; }
+			footer code { color: var(--subtext); }
+		</style>
+	</head>
+	<body>
+		<h1>p.pengeg.com <span>// rustypaste</span></h1>
+
+		<div id="drop">
+			<strong>tap to pick a file</strong>
+			or drop / paste one here
+		</div>
+		<input id="file" type="file" multiple>
+
+		<div class="row">
+			<label for="token">token</label>
+			<input id="token" type="password" placeholder="auth token" autocomplete="off">
+		</div>
+
+		<div class="row">
+			<label for="expire">expire</label>
+			<select id="expire">
+				<option value="" selected>default (never)</option>
+				<option value="1h">1 hour</option>
+				<option value="1d">1 day</option>
+				<option value="7d">1 week</option>
+				<option value="30d">1 month</option>
+			</select>
+		</div>
+
+		<div id="results"></div>
+
+		<footer>
+			cli: <code>curl -F 'file=@x.png' -H 'Authorization: &lt;token&gt;' https://p.pengeg.com</code>
+		</footer>
+
+		<script>
+			(function () {
+				var drop = document.getElementById('drop');
+				var fileInput = document.getElementById('file');
+				var results = document.getElementById('results');
+				var expireSel = document.getElementById('expire');
+				var tokenInput = document.getElementById('token');
+				
+				tokenInput.value = localStorage.getItem('rp_token') || '';
+				tokenInput.addEventListener('input', function () {
+					localStorage.setItem('rp_token', tokenInput.value.trim());
+					});
+					
+					function addResult(cls, text) {
+						var div = document.createElement('div');
+						div.className = 'result ' + cls;
+						div.textContent = text;
+						results.prepend(div);
+						return div;
+					}
+					
+					function upload(file) {
+						var token = tokenInput.value.trim();
+						if (!token) {
+							addResult('err', 'no auth token set');
+							tokenInput.focus();
+							return;
+						}
+						var row = addResult('uploading', 'uploading ' + file.name + '…');
+						var fd = new FormData();
+						fd.append('file', file, file.name);
+						var headers = { 'Authorization': token };
+						if (expireSel.value) headers['expire'] = expireSel.value;
+						
+						fetch('/', { method: 'POST', body: fd, headers: headers })
+						.then(function (r) {
+							return r.text().then(function (t) { return { ok: r.ok, status: r.status, text: t.trim() }; });
+							})
+							.then(function (res) {
+								if (!res.ok) {
+									row.className = 'result err';
+									row.textContent = file.name + ': ' + res.status + ' ' + res.text;
+									if (res.status === 401) tokenInput.focus();
+									return;
+								}
+								row.className = 'result ok';
+								row.textContent = '';
+								var a = document.createElement('a');
+								a.href = res.text; a.textContent = res.text; a.target = '_blank';
+								var btn = document.createElement('button');
+								btn.className = 'copy'; btn.textContent = 'copy';
+								btn.addEventListener('click', function () {
+									navigator.clipboard.writeText(res.text).then(function () {
+										btn.textContent = 'ok'; setTimeout(function () { btn.textContent = 'copy'; }, 1200);
+										});
+										});
+										row.appendChild(a); row.appendChild(btn);
+										})
+										.catch(function (e) {
+											row.className = 'result err';
+											row.textContent = file.name + ': ' + e;
+											});
+										}
+										
+										function uploadAll(files) {
+											for (var i = 0; i < files.length; i++) upload(files[i]);
+										}
+										
+										drop.addEventListener('click', function () { fileInput.click(); });
+										fileInput.addEventListener('change', function () {
+											uploadAll(fileInput.files); fileInput.value = '';
+											});
+											
+											['dragover', 'dragenter'].forEach(function (ev) {
+												drop.addEventListener(ev, function (e) { e.preventDefault(); drop.classList.add('hover'); });
+												});
+												['dragleave', 'drop'].forEach(function (ev) {
+													drop.addEventListener(ev, function (e) { e.preventDefault(); drop.classList.remove('hover'); });
+													});
+													drop.addEventListener('drop', function (e) {
+														if (e.dataTransfer.files.length) uploadAll(e.dataTransfer.files);
+														});
+														
+														document.addEventListener('paste', function (e) {
+															var items = e.clipboardData && e.clipboardData.files;
+															if (items && items.length) uploadAll(items);
+															});
+															})();
+		</script>
+	</body>
+</html>

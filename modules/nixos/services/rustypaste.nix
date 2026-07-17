@@ -51,8 +51,8 @@ in
         handle_spaces = "replace"
 
         [landing_page]
-        text = "p.pengeg.com — nothing to see here"
-        content_type = "text/plain; charset=utf-8"
+        file = "${./rustypaste-index.html}"
+        content_type = "text/html; charset=utf-8"
 
         [paste]
         random_url = { type = "alphanumeric", length = 8 }
