@@ -41,7 +41,7 @@
         enable = true;
         paths = [
           "/var/lib/rustypaste"
-          "/var/lib/acme"
+          "/var/lib/caddy"
         ];
       };
     };
