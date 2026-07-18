@@ -29,14 +29,7 @@
       domain = "pengeg.com";
       tls = true;
       acmeEmail = "noreply@pengeg.com";
-    };
-
-    services = {
-      caddy = {
-        enable = true;
-        environmentFile = config.sops.secrets.caddy-env.path;
-      };
-      proxy.vhosts.ntfy = {
+      vhosts.ntfy = {
         sub = "ntfy";
         rawConfig = ''
           basic_auth {
@@ -44,6 +37,14 @@
           }
           reverse_proxy 100.67.176.20:2586
         '';
+      };
+
+    };
+
+    services = {
+      caddy = {
+        enable = true;
+        environmentFile = config.sops.secrets.caddy-env.path;
       };
       mcp-nixos = {
         enable = true;
