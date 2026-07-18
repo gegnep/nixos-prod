@@ -16,19 +16,38 @@
 
   mySystem = {
     backup.mountPoint = "/backup";
+
     storage = {
       snapshots.enable = true;
       nfs.enable = true;
       scrub.enable = true;
     };
+
     network = {
       uplink = "enp34s0";
       tailscale.exitNode = true;
     };
+
     hardware = {
       nvidia.enable = true;
       intel.enable = true;
     };
+
+    proxy.externalTiles = {
+      rustypaste = {
+        name = "rustypaste";
+        description = "Pastebin";
+        href = "https://p.pengeg.com";
+        group = "Public";
+      };
+      ntfy = {
+        name = "ntfy";
+        description = "Alerts (web UI)";
+        href = "https://ntfy.pengeg.com";
+        group = "Public";
+      };
+    };
+
     services = {
       pihole.enable = true;
       buildServer.enable = true;

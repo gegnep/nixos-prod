@@ -9,20 +9,21 @@ let
   proxy = config.mySystem.proxy;
   d = proxy.domain;
 
-  # Tiles come from the proxy registry: every vhost whose dashboard != null,
-  # ordered alphabetically by tile name.
-  tiled = lib.filter (v: v.dashboard != null) (lib.attrValues proxy.vhosts);
-  sorted = lib.sort (a: b: a.dashboard.name < b.dashboard.name) tiled;
+  vhostTiles = map (v: {
+    inherit (v.dashboard) name description group;
+    href = "http://${v.sub}.${d}${v.dashboard.path}";
+  }) (lib.filter (v: v.dashboard != null) (lib.attrValues proxy.vhosts));
 
-  mkTile = v: {
-    ${v.dashboard.name} = {
-      href = "http://${v.sub}.${d}${v.dashboard.path}";
-      description = v.dashboard.description;
+  tiles = lib.sort (a: b: a.name < b.name) (vhostTiles ++ lib.attrValues proxy.externalTiles);
+
+  mkTile = t: {
+    ${t.name} = {
+      inherit (t) href description;
     };
   };
-  groups = lib.unique (map (v: v.dashboard.group) sorted);
+  groups = lib.unique (map (t: t.group) tiles);
   mkGroup = g: {
-    ${g} = map mkTile (lib.filter (v: v.dashboard.group == g) sorted);
+    ${g} = map mkTile (lib.filter (t: t.group == g) tiles);
   };
 in
 {
@@ -53,14 +54,12 @@ in
         theme = "dark";
         color = "gray";
         headerStyle = "clean";
-        layout = [
-          {
-            Services = {
-              style = "row";
-              columns = 3;
-            };
-          }
-        ];
+        layout = map (g: {
+          ${g} = {
+            style = "row";
+            columns = 3;
+          };
+        }) groups;
       };
 
       widgets = [

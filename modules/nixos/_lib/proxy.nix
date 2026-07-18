@@ -82,6 +82,33 @@ in
       '';
     };
 
+    externalTiles = lib.mkOption {
+      type = lib.types.attrsOf (
+        lib.types.submodule {
+          options = {
+            href = lib.mkOption {
+              type = lib.types.str;
+              description = "Full URL — external tiles aren't derived from this host's domain.";
+            };
+            name = lib.mkOption { type = lib.types.str; };
+            description = lib.mkOption {
+              type = lib.types.str;
+              default = "";
+            };
+            group = lib.mkOption {
+              type = lib.types.str;
+              default = "Services";
+            };
+          };
+        }
+      );
+      default = { };
+      description = ''
+        Dashboard tiles for services not proxied by this host (e.g. public vhosts on
+        another machine). Rendered by web/homepage.nix alongside registry tiles.
+      '';
+    };
+
     tls = lib.mkEnableOption "ACME TLS: vhosts become https://<sub>.<domain> (public hosts). Off = plain-HTTP internal vhosts.";
 
     acmeEmail = lib.mkOption {
