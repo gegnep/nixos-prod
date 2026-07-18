@@ -43,7 +43,7 @@
             pen {$NTFY_PASS_HASH}
           }
           reverse_proxy 100.67.176.20:2586
-        ''
+        '';
       };
       mcp-nixos = {
         enable = true;
