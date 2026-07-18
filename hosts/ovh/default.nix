@@ -35,7 +35,7 @@
           basic_auth {
             pen {$NTFY_PASS_HASH}
           }
-          reverse_proxy 100.67.176.20:2586
+          reverse_proxy 100.68.176.20:2586
         '';
       };
 
