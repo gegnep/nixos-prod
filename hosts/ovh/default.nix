@@ -1,4 +1,4 @@
-{ lib, ... }:
+{ lib, config, ... }:
 
 {
   imports = [
@@ -19,6 +19,8 @@
     };
   };
 
+  sops.secrets.caddy-env.restartUnits = [ "caddy.service" ];
+
   mySystem = {
     notify.url = "http://100.68.176.20:2586";
     storage.scrub.enable = true;
@@ -30,7 +32,19 @@
     };
 
     services = {
-      caddy.enable = true;
+      caddy = {
+        enable = true;
+        environmentFile = config.sops.secrets.caddy-env.path;
+      };
+      proxy.vhosts.ntfy = {
+        sub = "ntfy";
+        rawConfig = ''
+          basic_auth {
+            pen {$NTFY_PASS_HASH}
+          }
+          reverse_proxy 100.67.176.20:2586
+        ''
+      };
       mcp-nixos = {
         enable = true;
         funnel = false;

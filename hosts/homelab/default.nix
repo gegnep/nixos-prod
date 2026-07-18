@@ -41,7 +41,10 @@
       };
       mcp-nixos.enable = false;
       smartd.enable = true;
-      ntfy.enable = true;
+      ntfy = {
+        enable = true;
+        baseUrl = "https://ntfy.pengeg.com";
+      };
       caddy.enable = true;
       homepage.enable = true;
       netdata.enable = false;
