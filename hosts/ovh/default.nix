@@ -61,6 +61,7 @@
           "/var/lib/caddy"
         ];
       };
+      beszel.agent.enable = true;
     };
   };
 }

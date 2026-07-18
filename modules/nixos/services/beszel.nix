@@ -49,11 +49,15 @@ in
 
       services.beszel.agent = {
         enable = true;
-        environment.DOCKER_HOST = "unix:///run/podman/podman.sock";
+        environment = lib.mkIf cfg.agent.containers {
+          DOCKER_HOST = "unix:///run/podman/podman.sock";
+        };
         environmentFile = config.sops.secrets.beszel-agent-env.path;
         extraPath = lib.optional cfg.agent.nvidia (lib.getBin config.hardware.nvidia.package);
         smartmon.enable = cfg.agent.smart;
       };
+
+      networking.firewall.interfaces."tailscale0".allowedTCPPorts = [ 45876 ];
 
       systemd.services.beszel-agent.serviceConfig = lib.mkIf cfg.agent.nvidia {
         PrivateDevices = lib.mkForce false;

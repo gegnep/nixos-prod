@@ -21,6 +21,7 @@
 
     services = {
       fail2ban.enable = true;
+      beszel.agent.enable = true;
     };
   };
 }
