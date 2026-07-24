@@ -32,7 +32,7 @@
       }
       {
         name = "mining-patch-planner";
-        version = "1.7.20";
+        version = "1.7.21";
       }
       {
         name = "OilOutpostPlanner";
@@ -44,7 +44,7 @@
       }
       {
         name = "RateCalculator";
-        version = "3.4.0";
+        version = "3.4.1";
       }
       {
         name = "Roboport-Reskin";
@@ -132,11 +132,11 @@
       }
       {
         name = "Age-of-Production";
-        version = "2.1.4";
+        version = "2.2.3";
       }
       {
         name = "Age-of-Production-Graphics";
-        version = "2.1.0";
+        version = "2.2.0";
       }
       {
         name = "CleanedConcrete";
@@ -144,7 +144,7 @@
       }
       {
         name = "PlanetsLib";
-        version = "1.21.1";
+        version = "1.22.0";
       }
       {
         name = "lightorio";
@@ -152,7 +152,7 @@
       }
       {
         name = "Waterfill_v17";
-        version = "2.1.0";
+        version = "2.1.1";
       }
       {
         name = "hazard-concrete-recycling";
@@ -162,10 +162,10 @@
         name = "StorageTank2_2_0";
         version = "1.3.0";
       }
-      #{
-      #  name = "Planet-Hopper";
-      #  version = "4.2.1";
-      #}
+      {
+        name = "Planet-Hopper";
+        version = "4.3.1";
+      }
       {
         name = "let-me-laser-down-asteroids";
         version = "1.0.5";
@@ -173,6 +173,18 @@
       {
         name = "quality-upgrade-planner";
         version = "2.8.1";
+      }
+      {
+        name = "DiscoScience";
+        version = "2.1.0";
+      }
+      {
+        name = "max-power-draw";
+        version = "0.2.0";
+      }
+      {
+        name = "inserter-throughput-fork";
+        version = "0.1.7";
       }
     ];
   };

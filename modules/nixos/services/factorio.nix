@@ -9,18 +9,17 @@
 let
   cfg = config.mySystem.services.factorio;
 
-  # nixpkgs pins 2.0.76; experimental client is 2.1.7 → must pin ourselves.
   # Refresh on each experimental bump:
   #   curl -fsSL https://factorio.com/get-download/<ver>/headless/linux64 | sha256sum
   # (hex output — versions.json wants hex, NOT nix-prefetch-url base32)
   factorioVersions =
     let
       dist = {
-        name = "factorio_headless_x64-2.1.9.tar.xz";
-        version = "2.1.9";
+        name = "factorio_headless_x64-2.1.12.tar.xz";
+        version = "2.1.12";
         tarDirectory = "x64";
-        url = "https://factorio.com/get-download/2.1.9/headless/linux64";
-        sha256 = "2cf94327877c92b95857356f7629f674a1314abd2c09e5c992f345707d165980";
+        url = "https://factorio.com/get-download/2.1.12/headless/linux64";
+        sha256 = "885ff029a40b0edd815cfe1fc13845f232723da1ea8fe9a83eae114d1eccd3fe";
         needsAuth = false;
       };
     in
