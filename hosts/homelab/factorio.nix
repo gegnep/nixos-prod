@@ -116,11 +116,11 @@
       }
       {
         name = "galore_lib";
-        version = "2.2.2";
+        version = "2.2.3";
       }
       {
         name = "vanilla_galore_continued";
-        version = "1.4.4";
+        version = "1.4.5";
       }
       {
         name = "space_age_galore";
