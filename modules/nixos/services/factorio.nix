@@ -124,9 +124,10 @@ in
         declare -A keep
 
         fetch() {  # $1=name  $2=version|""
-          echo "fetching $1 ''${2:-latest}" >&2
-          local meta rel fn url
-          meta="$(curl -fsSL "https://mods.factorio.com/api/mods/$1/full")"
+        echo "fetching $1 ''${2:-latest}" >&2
+        local meta rel fn url enc
+        enc="$(jq -rn --arg s "$1" '$s|@uri')"
+        meta="$(curl -fsSL "https://mods.factorio.com/api/mods/$enc/full")"
           if [ -n "''${2:-}" ]; then
             rel="$(jq -c --arg v "$2" 'first(.releases[]|select(.version==$v))' <<<"$meta")"
           else

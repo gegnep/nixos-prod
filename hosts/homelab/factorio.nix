@@ -144,7 +144,7 @@
       }
       {
         name = "PlanetsLib";
-        version = "1.22.0";
+        version = "1.23.1";
       }
       {
         name = "lightorio";
@@ -185,6 +185,10 @@
       {
         name = "inserter-throughput-fork";
         version = "0.1.7";
+      }
+      {
+        name = "Flare Stack";
+        version = "4.2.2";
       }
     ];
   };
