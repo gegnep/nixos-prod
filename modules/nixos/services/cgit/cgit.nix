@@ -81,6 +81,20 @@ let
 
     clone-url=ssh://${cfg.sshUser}@git.${domain}${cfg.repoDir}/$CGIT_REPO_URL.git
   '';
+
+  gitNew = pkgs.writeShellApplication {
+    name = "git-new";
+    runtimeInputs = [ pkgs.git ];
+    text = ''
+      [ $# -ge 1 ] || { echo "usage: git-new <name|section/name> [description...]" >&2; exit 1; }
+      name=''${1%.git}; shift
+      repo="${cfg.repoDir}/$name.git"
+      [ -e "$repo" ] && { echo "exists: $repo" >&2; exit 1; }
+      git init --bare --initial-branch=main "$repo" >/dev/null
+      printf '%s\n' "$*" > "$repo/description"
+      echo "ssh://${cfg.sshUser}@git.${domain}$repo"
+    '';
+  };
 in
 {
   options.mySystem.services.cgit = {
@@ -119,7 +133,10 @@ in
     systemd.tmpfiles.rules = [
       "d ${cfg.repoDir} 0755 ${cfg.sshUser} ${config.users.users.${cfg.sshUser}.group} - -"
     ];
-    environment.systemPackages = [ pkgs.git ];
+    environment.systemPackages = [
+      pkgs.git
+      gitNew
+    ];
     environment.etc."gitconfig".text = ''
       [safe]
         directory = *
