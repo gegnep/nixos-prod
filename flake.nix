@@ -33,10 +33,31 @@
       flake = false;
     };
   };
-
   outputs =
     { nixpkgs, home-manager, ... }@inputs:
     let
+      mkModules = hostname: [
+        ./hosts/${hostname}
+        inputs.disko.nixosModules.disko
+        inputs.sops-nix.nixosModules.sops
+        home-manager.nixosModules.home-manager
+        (
+          { config, ... }:
+          {
+            home-manager = {
+              useGlobalPkgs = true;
+              useUserPackages = true;
+              extraSpecialArgs = {
+                inherit inputs;
+                hostOptions = config.mySystem;
+              };
+              backupFileExtension = "bak";
+              users.pengeg = import ./modules/home;
+            };
+          }
+        )
+      ];
+
       mkHost =
         {
           hostname,
@@ -45,29 +66,7 @@
         }:
         nixpkgs.lib.nixosSystem {
           specialArgs = { inherit inputs; };
-          modules = [
-            { nixpkgs.hostPlatform = system; }
-            ./hosts/${hostname}
-            inputs.disko.nixosModules.disko
-            inputs.sops-nix.nixosModules.sops
-            home-manager.nixosModules.home-manager
-            (
-              { config, ... }:
-              {
-                home-manager = {
-                  useGlobalPkgs = true;
-                  useUserPackages = true;
-                  extraSpecialArgs = {
-                    inherit inputs;
-                    hostOptions = config.mySystem;
-                  };
-                  backupFileExtension = "bak";
-                  users.pengeg = import ./modules/home;
-                };
-              }
-            )
-          ]
-          ++ extraModules;
+          modules = [ { nixpkgs.hostPlatform = system; } ] ++ mkModules hostname ++ extraModules;
         };
     in
     {
@@ -77,6 +76,39 @@
         oracle = mkHost {
           hostname = "oracle";
           system = "aarch64-linux";
+        };
+      };
+
+      colmena = {
+        meta = {
+          nixpkgs = import nixpkgs {
+            system = "x86_64-linux";
+            config.allowUnfree = true;
+          };
+          nodeNixpkgs.oracle = import nixpkgs {
+            system = "aarch64-linux";
+            config.allowUnfree = true;
+          };
+          specialArgs = { inherit inputs; };
+        };
+
+        homelab = {
+          imports = mkModules "homelab";
+          deployment = {
+            allowLocalDeployment = true;
+            targetHost = null; # apply-local only, never over SSH
+          };
+        };
+        ovh = {
+          imports = mkModules "ovh";
+          deployment.targetHost = "ovh"; # MagicDNS
+        };
+        oracle = {
+          imports = mkModules "oracle";
+          deployment = {
+            targetHost = "oracle";
+            buildOnTarget = true; # native aarch64 on the A1 beats qemu on homelab
+          };
         };
       };
     };

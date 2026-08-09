@@ -1,4 +1,4 @@
-{ ... }:
+{ pkgs, ... }:
 
 {
   imports = [
@@ -13,6 +13,8 @@
   boot.binfmt.emulatedSystems = [ "aarch64-linux" ];
 
   system.stateVersion = "26.05";
+
+  environment.systemPackages = with pkgs; [ colmena ];
 
   mySystem = {
     backup.mountPoint = "/backup";

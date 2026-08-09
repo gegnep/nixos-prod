@@ -25,6 +25,7 @@
     notify.url = "http://100.68.176.20:2586";
     storage.scrub.enable = true;
     homelabCache.enable = true;
+    colmenaTarget.enable = true;
 
     proxy = {
       domain = "pengeg.com";

@@ -18,6 +18,7 @@
     notify.url = "http://100.68.176.20:2586";
     storage.scrub.enable = true;
     homelabCache.enable = true;
+    colmenaTarget.enable = true;
 
     services = {
       fail2ban.enable = true;
