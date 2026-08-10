@@ -1,4 +1,4 @@
-{ pkgs, ... }:
+{ inputs, ... }:
 
 {
   imports = [
@@ -14,7 +14,7 @@
 
   system.stateVersion = "26.05";
 
-  environment.systemPackages = with pkgs; [ colmena ];
+  environment.systemPackages = [ inputs.colmena.packages.x86_64-linux.colmena ];
 
   mySystem = {
     backup.mountPoint = "/backup";

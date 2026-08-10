@@ -24,6 +24,11 @@
       inputs.nixpkgs.follows = "nixpkgs";
     };
 
+    colmena = {
+      url = "github:nix-community/colmena";
+      inputs.nixpkgs.follows = "nixpkgs";
+    };
+
     catppuccin.url = "github:catppuccin/nix";
 
     # Desktop config as a SOURCE TREE (flake = false): we import individual
@@ -34,7 +39,12 @@
     };
   };
   outputs =
-    { nixpkgs, home-manager, ... }@inputs:
+    {
+      self,
+      nixpkgs,
+      home-manager,
+      ...
+    }@inputs:
     let
       mkModules = hostname: [
         ./hosts/${hostname}
@@ -78,6 +88,10 @@
           system = "aarch64-linux";
         };
       };
+
+      # colmena main evaluates `<flake>#colmenaHive` via `nix eval`; the raw
+      # `colmena` output is only read under the deprecated --legacy-flake-eval.
+      colmenaHive = inputs.colmena.lib.makeHive self.outputs.colmena;
 
       colmena = {
         meta = {
