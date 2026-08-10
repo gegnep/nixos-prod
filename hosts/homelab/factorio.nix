@@ -100,7 +100,7 @@
       }
       {
         name = "LogisticTrainNetwork";
-        version = "3.0.0";
+        version = "3.1.0";
       }
       {
         name = "LTN_Combinator_Modernized";
@@ -132,7 +132,7 @@
       }
       {
         name = "Age-of-Production";
-        version = "2.2.3";
+        version = "2.2.5";
       }
       {
         name = "Age-of-Production-Graphics";
@@ -144,7 +144,7 @@
       }
       {
         name = "PlanetsLib";
-        version = "1.23.1";
+        version = "1.23.5";
       }
       {
         name = "lightorio";
@@ -164,7 +164,7 @@
       }
       {
         name = "Planet-Hopper";
-        version = "4.3.1";
+        version = "4.4.0";
       }
       {
         name = "let-me-laser-down-asteroids";
@@ -188,7 +188,7 @@
       }
       {
         name = "Flare Stack";
-        version = "4.2.2";
+        version = "4.3.1";
       }
     ];
   };
