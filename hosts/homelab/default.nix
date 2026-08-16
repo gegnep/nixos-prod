@@ -57,7 +57,7 @@
       syncthing.enable = true;
       ollama.enable = true;
       open-webui = {
-        enable = true;
+        enable = false;
         port = 3000;
       };
       mcp-nixos.enable = false;
@@ -68,7 +68,6 @@
       };
       caddy.enable = true;
       homepage.enable = true;
-      netdata.enable = false;
       beszel = {
         hub.enable = true;
         agent = {
