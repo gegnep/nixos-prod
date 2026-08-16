@@ -58,6 +58,10 @@
       ollama.enable = true;
       open-webui = {
         enable = false;
+        port = 3010;
+      };
+      unsloth = {
+        enable = true;
         port = 3000;
       };
       mcp-nixos.enable = false;
