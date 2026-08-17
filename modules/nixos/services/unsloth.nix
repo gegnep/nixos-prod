@@ -54,6 +54,12 @@ in
       }
     ];
 
+    sops.secrets.hf-token = { };
+    sops.templates."unsloth.env" = {
+      content = "HF_TOKEN=${config.sops.placeholder.hf-token}";
+      restartUnits = [ "podman-unsloth.service" ];
+    };
+
     systemd.tmpfiles.rules = [
       "d /var/lib/unsloth 0755 root root"
       "d /var/lib/unsloth/work 0755 1001 1001"
@@ -77,7 +83,12 @@ in
 
       environment = {
         HF_HUB_ENABLE_HF_TRANSFER = "1";
+        PYTORCH_ALLOC_CONF = "expandable_segments:True";
+        PYTORCH_CUDA_ALLOC_CONF = "expandable_segments:True";
+        TOKENIZERS_PARALLELISM = "false";
       };
+
+      environmentFiles = [ config.sops.templates."unsloth.env".path ];
 
       extraOptions = [
         "--shm-size=8g"
