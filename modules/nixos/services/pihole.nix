@@ -66,7 +66,7 @@ in
 
     systemd.tmpfiles.rules = [
       "d /var/lib/pihole 0750 root root -"
-      "d /var/lib/pihole/etc-pihole 0755 root root -"
+      "d /var/lib/pihole/etc-pihole 0755 1000 1000 -"
     ];
 
     networking.firewall = {
