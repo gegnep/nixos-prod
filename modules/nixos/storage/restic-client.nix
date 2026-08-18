@@ -36,6 +36,8 @@ in
     sops.secrets."restic-repo-url-${host}" = { };
     sops.secrets."restic-repo-password-${host}" = { };
 
+    programs.fuse.enable = true;
+
     services.restic.backups.homelab = {
       repositoryFile = config.sops.secrets."restic-repo-url-${host}".path;
       passwordFile = config.sops.secrets."restic-repo-password-${host}".path;

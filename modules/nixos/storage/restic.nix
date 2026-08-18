@@ -48,6 +48,8 @@ in
     sops.secrets.restic-b2-key-id = { };
     sops.secrets.restic-b2-app-key = { };
 
+    programs.fuse.enable = true;
+
     # B2 talks S3, so restic wants AWS-style env vars. Compose them into the
     # environmentFile from the two discrete secrets.
     sops.templates."restic-b2.env".content = ''

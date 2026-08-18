@@ -29,7 +29,10 @@
       inputs.nixpkgs.follows = "nixpkgs";
     };
 
-    catppuccin.url = "github:catppuccin/nix";
+    catppuccin = {
+      url = "github:catppuccin/nix";
+      inputs.nixpkgs.follows = "nixpkgs";
+    };
 
     # Desktop config as a SOURCE TREE (flake = false): we import individual
     # self-contained home modules by store path without inheriting its inputs.
@@ -110,18 +113,18 @@
           imports = mkModules "homelab";
           deployment = {
             allowLocalDeployment = true;
-            targetHost = null; # apply-local only, never over SSH
+            targetHost = null;
           };
         };
         ovh = {
           imports = mkModules "ovh";
-          deployment.targetHost = "ovh"; # MagicDNS
+          deployment.targetHost = "ovh";
         };
         oracle = {
           imports = mkModules "oracle";
           deployment = {
             targetHost = "oracle";
-            buildOnTarget = true; # native aarch64 on the A1 beats qemu on homelab
+            buildOnTarget = true;
           };
         };
       };
