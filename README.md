@@ -7,7 +7,7 @@ NixOS flake config for my homelab and VPS fleet.
 
 | Host | Machine | Role |
 |------|---------|------|
-| **homelab** | Ryzen 5 3600, 31 GiB, RTX 3060 + Arc A310 | Headless server — DNS, dashboards, git, AI, game servers, backups, nix build farm |
+| **homelab** | Ryzen 5 3600, 31 GiB, R9700 + Arc A310 | Headless server — DNS, dashboards, git, AI, game servers, backups, nix build farm |
 | **ovh** | OVH VPS (x86_64, BIOS/GRUB) | Public edge — TLS termination for `*.pengeg.com`, pastebin, MCP server |
 | **oracle** | Oracle Cloud A1 (aarch64, 4 OCPU / 24 GiB) | Mostly idle — Minecraft pending |
 
