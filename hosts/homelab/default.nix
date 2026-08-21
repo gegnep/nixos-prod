@@ -26,7 +26,7 @@
     };
 
     network = {
-      uplink = null;
+      uplink = "enp12s0";
       tailscale.exitNode = true;
     };
 
