@@ -63,6 +63,7 @@
       unsloth = {
         enable = true;
         port = 3000;
+        version = "2026.8.18";
       };
       mcp-nixos.enable = false;
       smartd.enable = true;

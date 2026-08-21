@@ -1,0 +1,105 @@
+# containers/unsloth/Containerfile  (gegnep/nixos-prod)
+#
+# Owned Unsloth Studio image. Replaces docker.io/unsloth/unsloth:latest
+# (frozen at 2026.5.9 / studio v0.1.43-beta, May 31).
+#
+# Build:
+#   sudo podman build -t localhost/unsloth-studio:${UNSLOTH_PIP_VERSION} \
+#     --build-arg UNSLOTH_REF=<git tag> \
+#     --build-arg UNSLOTH_PIP_VERSION=<pypi version> containers/unsloth/
+#
+# Design (Option A): install.sh runs at BUILD time at the real runtime path
+# (/home/unsloth/.unsloth), then the result is stashed to /opt/unsloth-pristine.
+# At runtime the volume shadows /home/unsloth/.unsloth; entrypoint.sh syncs
+# code dirs (venv + llama.cpp) from the pristine copy on version change and
+# never touches state (studio.db, auth/, cache).
+# Building at the real path keeps venv shebangs/pyvenv.cfg absolute paths valid.
+
+FROM docker.io/nvidia/cuda:12.8.1-runtime-ubuntu24.04
+
+ARG UNSLOTH_REF
+ARG UNSLOTH_PIP_VERSION
+RUN test -n "${UNSLOTH_REF}" && test -n "${UNSLOTH_PIP_VERSION}" \
+    || { echo "UNSLOTH_REF and UNSLOTH_PIP_VERSION build-args required (e.g. v0.1.800-beta / 2026.8.18)"; exit 1; }
+
+# Deps install.sh would otherwise apt-get itself (it runs unprivileged here).
+# libgomp1: llama.cpp prebuilts. rsync: entrypoint sync. xz/unzip: prebuilt archives.
+RUN apt-get update && DEBIAN_FRONTEND=noninteractive apt-get install -y --no-install-recommends \
+    python3 python3-venv python3-pip python3-dev \
+    build-essential \
+    git curl ca-certificates \
+    rsync xz-utils unzip \
+    libgomp1 \
+    && rm -rf /var/lib/apt/lists/*
+
+# uid/gid 1001 matches existing /var/lib/unsloth/* volume ownership.
+RUN groupadd -g 1001 unsloth && useradd -m -u 1001 -g 1001 -s /bin/bash unsloth
+
+# Build-time nvidia-smi stub. UNSLOTH_LLAMA_CPP_BACKEND=cuda pins the backend,
+# but install_llama_prebuilt.py's asset planner still needs driver facts from
+# three nvidia-smi invocations (-L, bare banner, --query-gpu=...compute_cap).
+# No driver in the build container -> driver_cuda_version=None -> "no runnable
+# asset" -> hard fail. The stub answers with the runtime host's real values.
+# Removed after install; the runtime container gets the real CDI nvidia-smi.
+ARG GPU_NAME="NVIDIA GeForce RTX 3060"
+ARG GPU_COMPUTE_CAP="8.6"
+ARG DRIVER_CUDA_VERSION="12.8"
+RUN printf '%s\n' \
+    '#!/bin/sh' \
+    "GPU_NAME=\"${GPU_NAME}\"" \
+    "CAP=\"${GPU_COMPUTE_CAP}\"" \
+    "CUDA=\"${DRIVER_CUDA_VERSION}\"" \
+    'case "$1" in' \
+    '  -L) echo "GPU 0: $GPU_NAME (UUID: GPU-00000000-0000-0000-0000-000000000000)" ;;' \
+    '  --query-gpu=*) echo "0, GPU-00000000-0000-0000-0000-000000000000, $CAP" ;;' \
+    '  *) echo "NVIDIA-SMI stub    Driver Version: build    CUDA Version: $CUDA" ;;' \
+    'esac' \
+    > /usr/local/bin/nvidia-smi && chmod 0755 /usr/local/bin/nvidia-smi
+
+USER unsloth
+WORKDIR /home/unsloth
+
+# Build-time env:
+#   UNSLOTH_TORCH_INDEX_FAMILY=cu128   -> cu128 torch wheels, skips GPU probe
+#   UNSLOTH_LLAMA_CPP_BACKEND=cuda     -> pin llama.cpp backend (no fallback)
+#     (accepted: auto|cpu|cuda|rocm|vulkan -- flip to rocm for the R9700 image)
+#   UNSLOTH_SKIP_AUTOSTART=1           -> install.sh must not launch studio
+#
+# RELEASE mode (no --local): installs the published wheel (backend + prebuilt
+# frontend included), fully self-contained under ~/.unsloth. --local would do
+# an EDITABLE install with venv references into the checkout, which the
+# trailing rm -rf would sever (ModuleNotFoundError: unsloth_cli at runtime).
+# The clone exists only to pin install.sh itself to a known ref.
+#
+# Version pin: --package rejects version specs (name chars only, flag-injection
+# guard), so the pin rides in via uv's UV_CONSTRAINT env (= --constraint file),
+# honored by every `uv pip install` the installer runs.
+RUN git clone --depth 1 --branch "${UNSLOTH_REF}" https://github.com/unslothai/unsloth.git /home/unsloth/src \
+    && printf 'unsloth==%s\n' "${UNSLOTH_PIP_VERSION}" > /home/unsloth/constraints.txt \
+    && cd /home/unsloth/src \
+    && UNSLOTH_TORCH_INDEX_FAMILY=cu128 \
+       UNSLOTH_LLAMA_CPP_BACKEND=cuda \
+       UNSLOTH_SKIP_AUTOSTART=1 \
+       UV_CONSTRAINT=/home/unsloth/constraints.txt \
+       ./install.sh \
+    && rm -rf /home/unsloth/src /home/unsloth/constraints.txt /home/unsloth/.cache/pip /home/unsloth/.cache/uv
+
+# Stash pristine install; runtime volume will shadow ~/.unsloth.
+USER root
+RUN rm /usr/local/bin/nvidia-smi \
+    && mv /home/unsloth/.unsloth /opt/unsloth-pristine \
+    && printf '%s_%s\n' "${UNSLOTH_REF}" "${UNSLOTH_PIP_VERSION}" > /opt/unsloth-pristine/.image-stamp \
+    && chown -R 1001:1001 /opt/unsloth-pristine
+
+COPY --chmod=0755 entrypoint.sh /usr/local/bin/entrypoint.sh
+
+USER unsloth
+WORKDIR /workspace/work
+
+# All caches (HF included) into the persistent /workspace/.cache volume,
+# matching the old image's layout so downloaded models are reused.
+ENV XDG_CACHE_HOME=/workspace/.cache \
+    HF_HOME=/workspace/.cache/huggingface
+
+EXPOSE 8000
+ENTRYPOINT ["/usr/local/bin/entrypoint.sh"]

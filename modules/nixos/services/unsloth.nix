@@ -7,9 +7,10 @@
 let
   cfg = config.mySystem.services.unsloth;
   defaultImages = {
-    cuda = "docker.io/unsloth/unsloth:latest";
-    rocm = null; # no upstream ROCm image (unsloth#5405);
+    cuda = "localhost/unsloth-studio:${cfg.version}";
+    rocm = null; # build a rocm variant post-transplant (UNSLOTH_LLAMA_CPP_BACKEND=rocm etc.)
   };
+
   image = if cfg.image != null then cfg.image else defaultImages.${cfg.acceleration};
   gpuFlags = {
     cuda = [ "--device=nvidia.com/gpu=all" ];
@@ -44,6 +45,12 @@ in
       default = 8000;
       description = "Host port for Unsloth Studio";
     };
+
+    version = lib.mkOption {
+      type = lib.types.str;
+      description = "Owned image tag; Build first: see containers/unsloth/Containerfile";
+      example = "2026.8.18";
+    };
   };
 
   config = lib.mkIf cfg.enable {
@@ -71,13 +78,14 @@ in
     virtualisation.oci-containers.containers.unsloth = {
       inherit image;
       autoStart = true;
+      pull = "never";
 
       ports = [ "${toString cfg.port}:8000" ];
 
       volumes = [
         "/var/lib/unsloth/work:/workspace/work"
         "/var/lib/unsloth/cache:/workspace/.cache"
-        "/var/lib/unsloth/studio:/workspace/studio"
+        "/var/lib/unsloth/studio:/workspace/studio:ro"
         "/var/lib/unsloth/unsloth-home:/home/unsloth/.unsloth"
       ];
 
