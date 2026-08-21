@@ -26,12 +26,13 @@
     };
 
     network = {
-      uplink = "enp34s0";
+      uplink = null;
       tailscale.exitNode = true;
     };
 
     hardware = {
-      nvidia.enable = true;
+      nvidia.enable = false;
+      amd.enable = true;
       intel.enable = true;
     };
 
@@ -55,13 +56,16 @@
       buildServer.enable = true;
       flake-builder.enable = true;
       syncthing.enable = true;
-      ollama.enable = true;
+      ollama = {
+        enable = true;
+        acceleration = "rocm";
+      };
       open-webui = {
         enable = false;
         port = 3010;
       };
       unsloth = {
-        enable = true;
+        enable = false;
         port = 3000;
         version = "2026.8.18";
       };
@@ -77,7 +81,7 @@
         hub.enable = true;
         agent = {
           enable = true;
-          nvidia = true;
+          nvidia = false;
           smart = true;
           containers = true;
         };
