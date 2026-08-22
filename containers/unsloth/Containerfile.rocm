@@ -1,0 +1,93 @@
+# containers/unsloth/Containerfile.rocm  (gegnep/nixos-prod)
+#
+# Owned Unsloth Studio image, ROCm variant (R9700 / gfx1201).
+# Same design as Containerfile; differences:
+#   - base carries the ROCm userspace (rocminfo/hipconfig/amd-smi, /opt/rocm)
+#   - no GPU probe stub: UNSLOTH_ROCM_GFX_ARCH is authoritative for install.sh
+#     and install_llama_prebuilt.py; UNSLOTH_TORCH_INDEX_FAMILY skips the
+#     rocminfo-based GPU presence check in get_torch_index_url
+#
+# Built by the unsloth-image systemd unit (modules/nixos/services/unsloth.nix):
+# tag = localhost/unsloth-studio-rocm:<version>-<ctxhash>. Manual build, for
+# debugging only:
+#   sudo podman build -f containers/unsloth/Containerfile.rocm \
+#     -t localhost/unsloth-studio-rocm:<pip version> \
+#     -v /var/lib/unsloth/wheels:/wheels:ro \
+#     --build-arg UNSLOTH_REF=<git tag> \
+#     --build-arg UNSLOTH_PIP_VERSION=<pypi version> containers/unsloth/
+
+ARG ROCM_BASE=docker.io/rocm/dev-ubuntu-24.04:7.2
+FROM ${ROCM_BASE}
+
+ARG UNSLOTH_REF
+ARG UNSLOTH_PIP_VERSION
+RUN test -n "${UNSLOTH_REF}" && test -n "${UNSLOTH_PIP_VERSION}" \
+    || { echo "UNSLOTH_REF and UNSLOTH_PIP_VERSION build-args required"; exit 1; }
+
+# torch wheel leaf; install.sh uses a pinned family verbatim, so keep it at a
+# published leaf (rocm6.0-6.4, rocm7.0-7.2) even if ROCM_BASE moves past it.
+# Also the /wheels/<family> subdir checked below.
+ARG TORCH_INDEX_FAMILY=rocm7.2
+ARG ROCM_GFX_ARCH=gfx1201
+
+RUN apt-get update && DEBIAN_FRONTEND=noninteractive apt-get install -y --no-install-recommends \
+    python3 python3-venv python3-pip python3-dev \
+    build-essential \
+    git curl ca-certificates \
+    rsync xz-utils unzip \
+    libgomp1 \
+    && rm -rf /var/lib/apt/lists/*
+
+# uid/gid 1001 matches existing /var/lib/unsloth/* volume ownership.
+RUN groupadd -g 1001 unsloth && useradd -m -u 1001 -g 1001 -s /bin/bash unsloth \
+    && usermod -aG video,render unsloth
+
+# Install at the real runtime path via symlink so venv shebangs/pyvenv.cfg
+# resolve to /home/unsloth/.unsloth, while the bytes land in
+# /opt/unsloth-pristine (no mv -> no duplicated layer, no chown -R).
+RUN mkdir -p /opt/unsloth-pristine && chown 1001:1001 /opt/unsloth-pristine \
+    && ln -s /opt/unsloth-pristine /home/unsloth/.unsloth
+
+USER unsloth
+WORKDIR /home/unsloth
+
+# UNSLOTH_LLAMA_CPP_BACKEND=rocm pins the llama.cpp bundle (linux-rocm).
+# The bundle vendors HIP but prefers /opt/rocm libs at runtime when /dev/kfd
+# exists (_native_linux_system_rocm_lib_dirs), so the base's ROCm is used.
+#
+# /wheels is bind-mounted by the unsloth-image unit (host /var/lib/unsloth/wheels).
+# When /wheels/<family> holds torch wheels, expose it as a flat index ABOVE the
+# CDN default index: uv's first-index strategy resolves torch* locally and only
+# fetches the small deps (pytorch-triton-rocm, sympy...) from download.pytorch.org.
+# Empty/absent -> CDN. uv cache persists across builds via the cache mount.
+RUN --mount=type=cache,target=/home/unsloth/.cache/uv,uid=1001,gid=1001 \
+    git clone --depth 1 --branch "${UNSLOTH_REF}" https://github.com/unslothai/unsloth.git /home/unsloth/src \
+    && printf 'unsloth==%s\n' "${UNSLOTH_PIP_VERSION}" > /home/unsloth/constraints.txt \
+    && cd /home/unsloth/src \
+    && if ls /wheels/"${TORCH_INDEX_FAMILY}"/torch-*.whl >/dev/null 2>&1; then export UV_INDEX=/wheels/"${TORCH_INDEX_FAMILY}"; fi \
+    && echo "[build] torch flat index: ${UV_INDEX:-<none, CDN>}" \
+    && UNSLOTH_TORCH_INDEX_FAMILY="${TORCH_INDEX_FAMILY}" \
+       UNSLOTH_ROCM_GFX_ARCH="${ROCM_GFX_ARCH}" \
+       UNSLOTH_LLAMA_CPP_BACKEND=rocm \
+       UNSLOTH_SKIP_AUTOSTART=1 \
+       UV_HTTP_TIMEOUT=900 \
+       UV_CONSTRAINT=/home/unsloth/constraints.txt \
+       ./install.sh \
+    && rm -rf /home/unsloth/src /home/unsloth/constraints.txt /home/unsloth/.cache/pip
+
+# Drop the symlink so the runtime volume mounts on a clean path; stamp pristine.
+USER root
+RUN rm /home/unsloth/.unsloth \
+    && printf '%s_%s_rocm\n' "${UNSLOTH_REF}" "${UNSLOTH_PIP_VERSION}" > /opt/unsloth-pristine/.image-stamp
+
+COPY --chmod=0755 entrypoint.sh /usr/local/bin/entrypoint.sh
+
+USER unsloth
+WORKDIR /workspace/work
+
+ENV XDG_CACHE_HOME=/workspace/.cache \
+    HF_HOME=/workspace/.cache/huggingface \
+    UNSLOTH_ROCM_GFX_ARCH=${ROCM_GFX_ARCH}
+
+EXPOSE 8000
+ENTRYPOINT ["/usr/local/bin/entrypoint.sh"]

@@ -1,26 +1,31 @@
 # containers/unsloth/Containerfile  (gegnep/nixos-prod)
 #
-# Owned Unsloth Studio image. Replaces docker.io/unsloth/unsloth:latest
-# (frozen at 2026.5.9 / studio v0.1.43-beta, May 31).
+# Owned Unsloth Studio image, CUDA variant (RTX 3060 / sidecar).
 #
-# Build:
-#   sudo podman build -t localhost/unsloth-studio:${UNSLOTH_PIP_VERSION} \
+# Built by the unsloth-image systemd unit (modules/nixos/services/unsloth.nix):
+# tag = localhost/unsloth-studio:<version>-<ctxhash>, rebuilt when version or
+# this directory changes. Manual build, for debugging only:
+#   sudo podman build -f containers/unsloth/Containerfile \
+#     -t localhost/unsloth-studio:<pip version> \
+#     -v /var/lib/unsloth/wheels:/wheels:ro \
 #     --build-arg UNSLOTH_REF=<git tag> \
 #     --build-arg UNSLOTH_PIP_VERSION=<pypi version> containers/unsloth/
 #
-# Design (Option A): install.sh runs at BUILD time at the real runtime path
-# (/home/unsloth/.unsloth), then the result is stashed to /opt/unsloth-pristine.
-# At runtime the volume shadows /home/unsloth/.unsloth; entrypoint.sh syncs
-# code dirs (venv + llama.cpp) from the pristine copy on version change and
-# never touches state (studio.db, auth/, cache).
-# Building at the real path keeps venv shebangs/pyvenv.cfg absolute paths valid.
+# Design: install.sh runs at BUILD time at the real runtime path
+# (/home/unsloth/.unsloth, a symlink to /opt/unsloth-pristine so venv
+# shebangs/pyvenv.cfg stay valid). At runtime the volume shadows
+# /home/unsloth/.unsloth; entrypoint.sh syncs code dirs (venv + llama.cpp)
+# from the pristine copy on stamp change and never touches state.
 
 FROM docker.io/nvidia/cuda:12.8.1-runtime-ubuntu24.04
 
 ARG UNSLOTH_REF
 ARG UNSLOTH_PIP_VERSION
 RUN test -n "${UNSLOTH_REF}" && test -n "${UNSLOTH_PIP_VERSION}" \
-    || { echo "UNSLOTH_REF and UNSLOTH_PIP_VERSION build-args required (e.g. v0.1.800-beta / 2026.8.18)"; exit 1; }
+    || { echo "UNSLOTH_REF and UNSLOTH_PIP_VERSION build-args required"; exit 1; }
+
+# torch wheel leaf; also the /wheels/<family> subdir checked below.
+ARG TORCH_INDEX_FAMILY=cu128
 
 # Deps install.sh would otherwise apt-get itself (it runs unprivileged here).
 # libgomp1: llama.cpp prebuilts. rsync: entrypoint sync. xz/unzip: prebuilt archives.
@@ -56,48 +61,58 @@ RUN printf '%s\n' \
     'esac' \
     > /usr/local/bin/nvidia-smi && chmod 0755 /usr/local/bin/nvidia-smi
 
+# Install at the real runtime path via symlink so venv shebangs/pyvenv.cfg
+# resolve to /home/unsloth/.unsloth, while the bytes land in
+# /opt/unsloth-pristine (no mv -> no duplicated layer, no chown -R).
+RUN mkdir -p /opt/unsloth-pristine && chown 1001:1001 /opt/unsloth-pristine \
+    && ln -s /opt/unsloth-pristine /home/unsloth/.unsloth
+
 USER unsloth
 WORKDIR /home/unsloth
 
 # Build-time env:
 #   UNSLOTH_TORCH_INDEX_FAMILY=cu128   -> cu128 torch wheels, skips GPU probe
 #   UNSLOTH_LLAMA_CPP_BACKEND=cuda     -> pin llama.cpp backend (no fallback)
-#     (accepted: auto|cpu|cuda|rocm|vulkan -- flip to rocm for the R9700 image)
 #   UNSLOTH_SKIP_AUTOSTART=1           -> install.sh must not launch studio
 #
 # RELEASE mode (no --local): installs the published wheel (backend + prebuilt
-# frontend included), fully self-contained under ~/.unsloth. --local would do
-# an EDITABLE install with venv references into the checkout, which the
-# trailing rm -rf would sever (ModuleNotFoundError: unsloth_cli at runtime).
+# frontend included), self-contained under ~/.unsloth. --local does an
+# EDITABLE install with venv refs into the checkout, severed by the rm -rf.
 # The clone exists only to pin install.sh itself to a known ref.
 #
-# Version pin: --package rejects version specs (name chars only, flag-injection
-# guard), so the pin rides in via uv's UV_CONSTRAINT env (= --constraint file),
-# honored by every `uv pip install` the installer runs.
-RUN git clone --depth 1 --branch "${UNSLOTH_REF}" https://github.com/unslothai/unsloth.git /home/unsloth/src \
+# Version pin: --package rejects version specs, so the pin rides in via uv's
+# UV_CONSTRAINT env, honored by every `uv pip install` the installer runs.
+#
+# /wheels is bind-mounted by the unsloth-image unit (host /var/lib/unsloth/wheels).
+# When /wheels/<family> holds torch wheels, expose it as a flat index ABOVE the
+# CDN default index: uv's first-index strategy resolves torch* locally and only
+# fetches the small deps from download.pytorch.org. Empty/absent -> CDN.
+# uv cache persists across builds via the cache mount (not in the image).
+RUN --mount=type=cache,target=/home/unsloth/.cache/uv,uid=1001,gid=1001 \
+    git clone --depth 1 --branch "${UNSLOTH_REF}" https://github.com/unslothai/unsloth.git /home/unsloth/src \
     && printf 'unsloth==%s\n' "${UNSLOTH_PIP_VERSION}" > /home/unsloth/constraints.txt \
     && cd /home/unsloth/src \
-    && UNSLOTH_TORCH_INDEX_FAMILY=cu128 \
+    && if ls /wheels/"${TORCH_INDEX_FAMILY}"/torch-*.whl >/dev/null 2>&1; then export UV_INDEX=/wheels/"${TORCH_INDEX_FAMILY}"; fi \
+    && echo "[build] torch flat index: ${UV_INDEX:-<none, CDN>}" \
+    && UNSLOTH_TORCH_INDEX_FAMILY="${TORCH_INDEX_FAMILY}" \
        UNSLOTH_LLAMA_CPP_BACKEND=cuda \
        UNSLOTH_SKIP_AUTOSTART=1 \
+       UV_HTTP_TIMEOUT=900 \
        UV_CONSTRAINT=/home/unsloth/constraints.txt \
        ./install.sh \
-    && rm -rf /home/unsloth/src /home/unsloth/constraints.txt /home/unsloth/.cache/pip /home/unsloth/.cache/uv
+    && rm -rf /home/unsloth/src /home/unsloth/constraints.txt /home/unsloth/.cache/pip
 
-# Stash pristine install; runtime volume will shadow ~/.unsloth.
+# Drop the symlink so the runtime volume mounts on a clean path; stamp pristine.
 USER root
-RUN rm /usr/local/bin/nvidia-smi \
-    && mv /home/unsloth/.unsloth /opt/unsloth-pristine \
-    && printf '%s_%s\n' "${UNSLOTH_REF}" "${UNSLOTH_PIP_VERSION}" > /opt/unsloth-pristine/.image-stamp \
-    && chown -R 1001:1001 /opt/unsloth-pristine
+RUN rm /usr/local/bin/nvidia-smi /home/unsloth/.unsloth \
+    && printf '%s_%s\n' "${UNSLOTH_REF}" "${UNSLOTH_PIP_VERSION}" > /opt/unsloth-pristine/.image-stamp
 
 COPY --chmod=0755 entrypoint.sh /usr/local/bin/entrypoint.sh
 
 USER unsloth
 WORKDIR /workspace/work
 
-# All caches (HF included) into the persistent /workspace/.cache volume,
-# matching the old image's layout so downloaded models are reused.
+# All caches (HF included) into the persistent /workspace/.cache volume.
 ENV XDG_CACHE_HOME=/workspace/.cache \
     HF_HOME=/workspace/.cache/huggingface
 

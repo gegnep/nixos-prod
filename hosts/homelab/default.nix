@@ -65,9 +65,11 @@
         port = 3010;
       };
       unsloth = {
-        enable = false;
+        enable = true;
+        acceleration = "rocm";
         port = 3000;
-        version = "2026.8.18";
+        version = "2026.8.19";
+        studioRef = "v0.1.801-beta";
       };
       mcp-nixos.enable = false;
       smartd.enable = true;
