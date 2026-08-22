@@ -81,7 +81,8 @@
         hub.enable = true;
         agent = {
           enable = true;
-          nvidia = false;
+          amd = true;
+          intel = true;
           smart = true;
           containers = true;
         };
