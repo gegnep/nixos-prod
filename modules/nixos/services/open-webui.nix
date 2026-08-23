@@ -34,6 +34,7 @@ in
 
       environment = {
         OLLAMA_BASE_URL = "http://127.0.0.1:11434";
+        WEBUI_URL = "http${lib.optionalString config.mySystem.proxy.tls "s"}://ai.${config.mySystem.proxy.domain}";
 
         ANONYMIZED_TELEMETRY = "False";
         DO_NOT_TRACK = "True";
