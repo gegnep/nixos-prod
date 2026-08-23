@@ -90,6 +90,8 @@ in
       "d /var/lib/unsloth/cache 0755 1001 1001"
       "d /var/lib/unsloth/studio 0755 1001 1001"
       "d /var/lib/unsloth/unsloth-home 0755 1001 1001"
+      "d /var/lib/models/hf 0755 1001 1001"
+      "d /var/lib/models/gguf 0775 1001 1001"
       "d ${wheelsDir} 0755 root root"
     ];
 
@@ -139,8 +141,10 @@ in
       volumes = [
         "/var/lib/unsloth/work:/workspace/work"
         "/var/lib/unsloth/cache:/workspace/.cache"
+        "/var/lib/models/hf:/workspace/.cache/huggingface"
         "/var/lib/unsloth/studio:/workspace/studio:ro"
         "/var/lib/unsloth/unsloth-home:/home/unsloth/.unsloth"
+        "/var/lib/models/gguf:/home/unsloth/.unsloth/studio/exports"
       ];
 
       environment = {

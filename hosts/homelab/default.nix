@@ -61,7 +61,7 @@
         acceleration = "rocm";
       };
       open-webui = {
-        enable = false;
+        enable = true;
         port = 3010;
       };
       unsloth = {
