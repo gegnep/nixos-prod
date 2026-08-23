@@ -88,9 +88,19 @@ let
       }
 
       import_dir() {
-        local dir=$1 name=$2
-        (cd "$dir" && ollama create "$name") || return 1
-        echo "imported: $name  (from $dir)"
+        # ollama create's FROM . uploads every file in the dir, and Studio's
+        # export_metadata.json breaks its GGUF parsing (verified 2026-08-23).
+        # Stage only the Modelfile and ggufs, same fs, then create from there.
+        local dir=$1 name=$2 staging
+        staging=$(mktemp -d /var/lib/models/.staging/import-XXXXXX) || return 1
+        if cp -- "$dir/Modelfile" "$dir"/*.gguf "$staging/" \
+          && (cd "$staging" && ollama create "$name"); then
+          rm -rf -- "$staging"
+          echo "imported: $name  (from $dir)"
+        else
+          rm -rf -- "$staging"
+          return 1
+        fi
       }
 
       if [ $# -eq 0 ]; then
@@ -244,6 +254,8 @@ in
 
     systemd.tmpfiles.rules = [
       "d /var/lib/models/ollama 0755 ollama ollama"
+      # import staging: same fs as gguf/, world-writable like /tmp
+      "d /var/lib/models/.staging 1777 root root"
     ];
 
     environment.systemPackages = [
