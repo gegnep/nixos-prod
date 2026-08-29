@@ -31,6 +31,7 @@
                   mountOptions = [
                     "compress=zstd"
                     "noatime"
+                    "nodiscard"
                   ];
                 };
                 "@nix" = {
@@ -38,6 +39,7 @@
                   mountOptions = [
                     "compress=zstd"
                     "noatime"
+                    "nodiscard"
                   ];
                 };
                 "@home" = {
@@ -52,6 +54,7 @@
                   mountOptions = [
                     "compress=zstd"
                     "noatime"
+                    "nodiscard"
                   ];
                 };
                 "@snapshots" = {
@@ -59,6 +62,27 @@
                   mountOptions = [
                     "compress=zstd"
                     "noatime"
+                  ];
+                };
+                "@models" = {
+                  mountpoint = "/var/lib/models";
+                  mountOptions = [
+                    "noatime"
+                    "nodatacow"
+                  ];
+                };
+                "@containers" = {
+                  mountpoint = "/var/lib/containers";
+                  mountOptions = [
+                    "noatime"
+                    "nodatacow"
+                  ];
+                };
+                "@unsloth" = {
+                  mountpoint = "/var/lib/unsloth";
+                  mountOptions = [
+                    "noatime"
+                    "nodatacow"
                   ];
                 };
               };

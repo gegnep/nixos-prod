@@ -32,7 +32,8 @@ in
 
     services.tailscale = {
       enable = true;
-      useRoutingFeatures = if cfg.tailscale.exitNode then "server" else "none";
+      openFirewall = true;
+      useRoutingFeatures = if cfg.tailscale.exitNode then "both" else "client";
       extraSetFlags = [ "--ssh" ] ++ lib.optionals cfg.tailscale.exitNode [ "--advertise-exit-node" ];
     };
     networking.firewall.trustedInterfaces = [ "tailscale0" ];

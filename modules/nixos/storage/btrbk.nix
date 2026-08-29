@@ -4,12 +4,14 @@ let
 in
 {
   config = lib.mkIf config.mySystem.storage.snapshots.enable {
+    services.btrbk.niceness = 19;
+    services.btrbk.ioSchedulingClass = "idle";
     # The /mnt/nvme top-level mount that btrbk snapshots from lives in filesystems.nix.
     services.btrbk.instances.homelab = {
-      onCalendar = "hourly";
+      onCalendar = "*-*-* 00/4:00:00";
       settings = {
         snapshot_preserve_min = "latest";
-        snapshot_preserve = "24h 7d 4w";
+        snapshot_preserve = "12h 7d 4w";
         target_preserve_min = "no";
         target_preserve = "24h 7d 4w";
         snapshot_dir = "@snapshots";

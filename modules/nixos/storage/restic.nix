@@ -39,6 +39,7 @@ in
         "/var/lib/unsloth/studio" # 23G, rebuilt by the image unit
         "/var/lib/unsloth/wheels" # 5.8G of torch wheels, re-downloadable
         "/var/lib/unsloth/cache"
+        "/var/lib/unsloth/unsloth-home"
         "/var/lib/containers" # podman storage, re-creatable
         "/var/lib/postgresql" # live PG files are inconsistent — exclude (see note)
         "/var/lib/systemd"

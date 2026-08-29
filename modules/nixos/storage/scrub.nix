@@ -3,9 +3,8 @@
   config = lib.mkIf config.mySystem.storage.scrub.enable {
     services.btrfs.autoScrub = {
       enable = true;
-      interval = "weekly";
-      # snapshots.enable implies the raid1 mirror is present and mounted;
-      # scrub it alongside root.
+      interval = "monthly";
+      limit = "100M";
       fileSystems = [
         "/"
       ]
