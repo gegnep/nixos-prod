@@ -31,8 +31,14 @@ in
         "/home/*/videos" # yt-dlp dumps here
         "**/.direnv"
         # /var/lib: big or re-downloadable, or DBs that need dump-based backup
-        "/var/lib/ollama" # models, re-pullable, huge
-        "/var/lib/private/ollama"
+        # NOTE: ollama's store moved to /var/lib/models/ollama (OLLAMA_MODELS).
+        # /var/lib/ollama is now just $HOME for the unit (~19M) — keep it.
+        "/var/lib/models/ollama" # 136G of blobs, re-pullable
+        "/var/lib/models/hf" # 118G of HF base weights, re-downloadable
+        "/var/lib/models/.staging" # transient import staging
+        "/var/lib/unsloth/studio" # 23G, rebuilt by the image unit
+        "/var/lib/unsloth/wheels" # 5.8G of torch wheels, re-downloadable
+        "/var/lib/unsloth/cache"
         "/var/lib/containers" # podman storage, re-creatable
         "/var/lib/postgresql" # live PG files are inconsistent — exclude (see note)
         "/var/lib/systemd"
