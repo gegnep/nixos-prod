@@ -244,6 +244,7 @@ in
         OLLAMA_FLASH_ATTENTION = "1";
         OLLAMA_KV_CACHE_TYPE = "q8_0";
         OLLAMA_KEEP_ALIVE = "10m";
+        OLLAMA_MAX_LOADED_MODELS = "3";
       };
     };
 

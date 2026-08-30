@@ -71,6 +71,8 @@
         version = "2026.8.19";
         studioRef = "v0.1.801-beta";
       };
+      openai-oauth.enable = true;
+      tinyfish-search.enable = true;
       mcp-nixos.enable = false;
       smartd.enable = true;
       ntfy = {
