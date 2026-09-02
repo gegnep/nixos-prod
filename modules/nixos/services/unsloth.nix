@@ -161,6 +161,7 @@ in
     };
 
     networking.firewall.interfaces."tailscale0".allowedTCPPorts = [ cfg.port ];
+    networking.firewall.interfaces."podman0".allowedTCPPorts = [ 11434 ];
 
     mySystem.proxy.vhosts.unsloth = {
       sub = "sloth";

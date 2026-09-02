@@ -68,8 +68,8 @@
         enable = true;
         acceleration = "rocm";
         port = 3000;
-        version = "2026.8.19";
-        studioRef = "v0.1.801-beta";
+        version = "2026.8.22";
+        studioRef = "v0.1.804-beta";
       };
       openai-oauth.enable = true;
       tinyfish-search.enable = true;
