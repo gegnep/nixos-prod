@@ -87,8 +87,10 @@ RUN set -eu; \
 
 # Drop the symlink so the runtime volume mounts on a clean path; stamp pristine.
 USER root
+ARG IMAGE_STAMP=""
 RUN rm /home/unsloth/.unsloth \
-    && printf '%s_%s_rocm\n' "${UNSLOTH_REF}" "${UNSLOTH_PIP_VERSION}" > /opt/unsloth-pristine/.image-stamp
+    && printf '%s_%s_rocm%s\n' "${UNSLOTH_REF}" "${UNSLOTH_PIP_VERSION}" "${IMAGE_STAMP:+_$IMAGE_STAMP}" \
+       > /opt/unsloth-pristine/.image-stamp
 
 COPY --chmod=0755 entrypoint.sh /usr/local/bin/entrypoint.sh
 

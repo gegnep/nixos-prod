@@ -119,6 +119,7 @@ in
           -v ${wheelsDir}:/wheels:ro \
           --build-arg UNSLOTH_REF=${cfg.studioRef} \
           --build-arg UNSLOTH_PIP_VERSION=${cfg.version} \
+          --build-arg IMAGE_STAMP=${cfg.version}-${ctxHash} \
           ${containerDir}
       '';
     });
