@@ -32,7 +32,7 @@ ARG ROCM_GFX_ARCH=gfx1201
 
 RUN apt-get update && DEBIAN_FRONTEND=noninteractive apt-get install -y --no-install-recommends \
     python3 python3-venv python3-pip python3-dev \
-    build-essential \
+    build-essential patch \
     git curl ca-certificates \
     rsync xz-utils unzip \
     libgomp1 \
@@ -74,6 +74,16 @@ RUN --mount=type=cache,target=/home/unsloth/.cache/uv,uid=1001,gid=1001 \
        UV_CONSTRAINT=/home/unsloth/constraints.txt \
        ./install.sh \
     && rm -rf /home/unsloth/src /home/unsloth/constraints.txt /home/unsloth/.cache/pip
+
+COPY --chown=1001:1001 patches/ /tmp/patches/
+RUN set -eu; \
+    sp=$(ls -d /opt/unsloth-pristine/studio/unsloth_studio/lib/python3.*/site-packages); \
+    for p in /tmp/patches/*.patch; do \
+        echo "[build] applying $(basename "$p")"; \
+        patch --batch -p1 -d "$sp" < "$p"; \
+    done; \
+    grep -q '"pad_to_multiple_of": 64' "$sp/studio/backend/core/training/trainer.py"; \
+    rm -rf /tmp/patches
 
 # Drop the symlink so the runtime volume mounts on a clean path; stamp pristine.
 USER root
