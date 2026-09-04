@@ -1,0 +1,40 @@
+--- a/studio/backend/core/training/trainer.py
++++ b/studio/backend/core/training/trainer.py
+@@ -3895,6 +3895,16 @@
+             )
+ 
+             config_args = {
++                # --- v1.5 gfx1201 GEMM over-read workaround ---
++                # On gfx1201 / ROCm 7.2.26015 both hipBLASLt and rocBLAS over-read operand A
++                # of C(32,N) = A^T(32,K) @ B(K,N) -- the LoRA-A weight gradient -- whenever
++                # K % 64 != 0, faulting when A's storage ends on a 2 MB mapping edge.
++                # K is the micro-batch token count (batch * padded_seq_len), so padding every
++                # batch to a multiple of 64 makes K % 64 == 0 for ANY batch size, including a
++                # short final batch. Pad positions get attention_mask 0 and labels -100, so
++                # the gradient is unchanged.
++                "pad_to_multiple_of": 64,
++                # --- end v1.5 workaround ---
+                 "per_device_train_batch_size": training_args.get("batch_size", 2),
+                 "gradient_accumulation_steps": training_args.get("gradient_accumulation_steps", 4),
+                 "num_train_epochs": training_args.get("num_epochs", 3),
+@@ -4200,6 +4210,20 @@
+                     dataset_template = ("alpaca" if dataset_final_format == "alpaca" else None),
+                 )
+ 
++                # --- v1.5 gfx1201 GEMM over-read workaround (part 2) ---
++                # apply_completion_masking swaps the collator for a fresh
++                # DataCollatorForSeq2Seq. When the source collator is not
++                # processor-backed (TRL's DataCollatorForLanguageModeling holds a bare
++                # pad_token_id), unsloth_zoo rebuilds it with an EMPTY kwargs dict, which
++                # silently drops the pad_to_multiple_of set in config_args. Re-apply it on
++                # the final collator so the micro-batch token count K stays a multiple of
++                # 64 and the LoRA-A weight-gradient GEMM does not over-read operand A.
++                _v15_collator = getattr(self.trainer, "data_collator", None)
++                if _v15_collator is not None and hasattr(_v15_collator, "pad_to_multiple_of"):
++                    _v15_collator.pad_to_multiple_of = 64
++                    logger.info("[v15] forced data_collator.pad_to_multiple_of = 64\n")
++                # --- end v1.5 workaround (part 2) ---
++
+                 if not masking_applied:
+                     train_on_responses_enabled = False
+ 
