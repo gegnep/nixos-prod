@@ -21,6 +21,7 @@ in
     };
 
     services.lact.enable = true;
+    systemd.services.lactd.serviceConfig.ExecStartPre = "${pkgs.coreutils}/bin/rm -f /run/lactd.sock";
 
     environment.etc."lact/config.yaml".text = ''
       version: 6
