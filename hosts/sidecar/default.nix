@@ -31,8 +31,10 @@
         nvidia = true;
       };
 
-      # ollama = { enable = true; acceleration = "cuda"; };
-      # open-webui = { enable = true; port = 3010; };
+      ollama = {
+        enable = true;
+        acceleration = "cuda";
+      };
     };
   };
 }
