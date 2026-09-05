@@ -2,6 +2,7 @@
   config,
   lib,
   pkgs,
+  mkFailureUnit,
   ...
 }:
 
@@ -11,6 +12,12 @@ let
     cuda = pkgs.ollama-cuda;
     rocm = pkgs.ollama-rocm;
     cpu = pkgs.ollama-cpu;
+  };
+  defaultEnvironment = {
+    OLLAMA_FLASH_ATTENTION = "1";
+    OLLAMA_KV_CACHE_TYPE = "q8_0";
+    OLLAMA_KEEP_ALIVE = "15m";
+    OLLAMA_MAX_LOADED_MODELS = "1";
   };
 
   # Shared bash preamble for both helpers. Pins the endpoint (an inherited
@@ -223,6 +230,16 @@ in
       default = null;
       description = "HSA_OVERRIDE_GFX_VERSION, only if ROCm misdetects the GPU";
     };
+
+    environment = lib.mkOption {
+      type = lib.types.attrsOf (lib.types.nullOr lib.types.str);
+      default = { };
+      example = {
+        OLLAMA_CONTEXT_LENGTH = "16384";
+        OLLAMA_KEEP_ALIVE = null; # drop the module default
+      };
+      description = "Environment for ollama.service. Merged over the module defaults ";
+    };
   };
 
   config = lib.mkIf cfg.enable {
@@ -240,12 +257,7 @@ in
       group = "ollama";
       modelsDir = "/var/lib/models/ollama";
 
-      environmentVariables = {
-        OLLAMA_FLASH_ATTENTION = "1";
-        OLLAMA_KV_CACHE_TYPE = "q8_0";
-        OLLAMA_KEEP_ALIVE = "10m";
-        OLLAMA_MAX_LOADED_MODELS = "3";
-      };
+      environmentVariables = lib.filterAttrs (_: v: v != null) (defaultEnvironment // cfg.environment);
     };
 
     # nixpkgs sets DynamicUser=true unconditionally (verified on master);
@@ -263,5 +275,13 @@ in
       ollamaImport
       ollamaPrune
     ];
+
+    systemd.services.ollama.unitConfig.OnFailure = [ "notify-ollama-fail.service" ];
+    systemd.services.notify-ollama-fail = mkFailureUnit {
+      name = "ollama";
+      title = "ollama failed";
+      body = "ollama.service entered failed state; check journalctl -u ollama";
+      tags = "warning";
+    };
   };
 }

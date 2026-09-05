@@ -52,13 +52,53 @@
     };
 
     services = {
-      pihole.enable = true;
+      smartd.enable = true;
+      atuin = {
+        enable = true;
+        openRegistration = true;
+      };
       buildServer.enable = true;
       flake-builder.enable = true;
+      restic.enable = true;
+      resticServer = {
+        enable = true;
+        port = 8010;
+        clients = [
+          "blackbox"
+          "nixpad"
+          "ovh"
+        ];
+      };
+      unifi-backup.enable = true;
+
+      homepage.enable = true;
+      caddy.enable = true;
+      pihole.enable = true;
       syncthing.enable = true;
+      cgit.enable = true;
+      ntfy = {
+        enable = true;
+        baseUrl = "https://ntfy.pengeg.com";
+      };
+      beszel = {
+        hub.enable = true;
+        agent = {
+          enable = true;
+          amd = true;
+          intel = true;
+          smart = true;
+          containers = true;
+        };
+      };
+
       ollama = {
         enable = true;
         acceleration = "rocm";
+        environment = {
+          OLLAMA_CONTEXT_LENGTH = "65536";
+          OLLAMA_MAX_LOADED_MODELS = "3";
+          OLLAMA_NUM_PARALLEL = "2";
+        };
       };
       open-webui = {
         enable = true;
@@ -74,39 +114,6 @@
       openai-oauth.enable = true;
       tinyfish-search.enable = true;
       mcp-nixos.enable = false;
-      smartd.enable = true;
-      ntfy = {
-        enable = true;
-        baseUrl = "https://ntfy.pengeg.com";
-      };
-      caddy.enable = true;
-      homepage.enable = true;
-      beszel = {
-        hub.enable = true;
-        agent = {
-          enable = true;
-          amd = true;
-          intel = true;
-          smart = true;
-          containers = true;
-        };
-      };
-      atuin = {
-        enable = true;
-        openRegistration = true;
-      };
-      restic.enable = true;
-      resticServer = {
-        enable = true;
-        port = 8010;
-        clients = [
-          "blackbox"
-          "nixpad"
-          "ovh"
-        ];
-      };
-      cgit.enable = true;
-      unifi-backup.enable = true;
     };
   };
 }

@@ -34,6 +34,11 @@
       ollama = {
         enable = true;
         acceleration = "cuda";
+        environment = {
+          OLLAMA_CONTEXT_LENGTH = "32768";
+          OLLAMA_NUM_PARALLEL = "1";
+          OLLAMA_KEEP_ALIVE = "1h";
+        };
       };
     };
   };
