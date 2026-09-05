@@ -3,8 +3,7 @@
 {
   disko.devices.disk.nvme = {
     type = "disk";
-    # REPLACE before running disko. `ls -l /dev/disk/by-id/ | grep -i nvme` on the target.
-    device = "/dev/disk/by-id/nvme-REPLACE_ME";
+    device = "/dev/disk/by-id/nvme-WD_Green_SN350_1TB_2G0C_25466Q801871";
     content = {
       type = "gpt";
       partitions = {
