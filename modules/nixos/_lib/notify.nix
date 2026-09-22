@@ -41,7 +41,7 @@
           -H "Priority: ${priority}" \
           -H "Tags: ${tags}" \
           -d "${body}" \
-          ${config.mySystem.notify.url}/${config.mySystem.notify.topic} >/dev/null || true
+          ${config.mySystem.notify.url}/${config.mySystem.notify.topic} >/dev/null || echo "ntfy unreachable, alert for ${name} dropped" >&2
       '';
     };
 }
