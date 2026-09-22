@@ -24,7 +24,7 @@ in
     systemd.services.lactd.serviceConfig.ExecStartPre = "${pkgs.coreutils}/bin/rm -f /run/lactd.sock";
 
     environment.etc."lact/config.yaml".text = ''
-      version: 6
+      version: 7
       daemon:
         log_level: info
         admin_group: wheel
