@@ -18,6 +18,7 @@
 
   mySystem = {
     backup.mountPoint = "/backup";
+    power.ignorePowerKey = true;
 
     storage = {
       snapshots.enable = true;
