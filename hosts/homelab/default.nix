@@ -50,6 +50,12 @@
         href = "https://ntfy.pengeg.com";
         group = "Public";
       };
+      printcam = {
+        name = "Core One+ (Gen2) Camera";
+        description = "Live view (auth)";
+        href = "https://cam.pengeg.com";
+        group = "Public";
+      };
     };
 
     services = {
@@ -90,6 +96,10 @@
           smart = true;
           containers = true;
         };
+      };
+      printcam = {
+        enable = true;
+        cameraHost = "10.0.0.242"; # Buddy3D Cam
       };
 
       ollama = {

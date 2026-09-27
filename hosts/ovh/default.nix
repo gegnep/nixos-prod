@@ -55,6 +55,13 @@
         funnel = false;
       };
       rustypaste.enable = true;
+      printcam.edge = {
+        enable = true;
+        users = {
+          pen = "CAM_PEN_HASH";
+          bro = "CAM_BRO_HASH";
+        };
+      };
       fail2ban.enable = true;
       resticClient = {
         enable = true;
