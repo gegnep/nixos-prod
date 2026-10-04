@@ -205,6 +205,7 @@
 						rpm: (v) => (v == null ? "—" : Math.round(v).toLocaleString()),
 						mm: (v) => (v == null ? "—" : (+v).toFixed(2)),
 						volt: (v) => (v == null ? "—" : (+v).toFixed(2)),
+						amp: (v) => (v == null ? "—" : (+v).toFixed(2)),
 						};
 						const S = {
 							noz:     { label: "Nozzle",         short: "noz", c: "--peach",    unit: "°",   fmt: F.temp, target: "noz_t" },
@@ -213,6 +214,11 @@
 							hbr:     { label: "Heatbreak",      short: "hbr", c: "--red",      unit: "°",   fmt: F.temp },
 							brd:     { label: "Board",          short: "brd", c: "--sapphire", unit: "°",   fmt: F.temp },
 							mcu:     { label: "MCU",            short: "mcu", c: "--green",    unit: "°",   fmt: F.temp },
+							cpu:     { label: "CPU",            short: "cpu", c: "--yellow",   unit: "%",   fmt: F.pct },
+							p_noz:   { label: "Nozzle heater",  short: "nzh", c: "--peach",    unit: "%",   fmt: F.pct },
+							p_bed:   { label: "Bed heater",     short: "bdh", c: "--mauve",    unit: "%",   fmt: F.pct },
+							i_in:    { label: "Input current",  short: "iin", c: "--sky",      unit: "A",   fmt: F.amp },
+							i_heat:  { label: "Heater current", short: "iht", c: "--flamingo", unit: "A",   fmt: F.amp },
 							f_print: { label: "Print fan",      short: "prt", c: "--blue",     unit: "%",   fmt: F.pct },
 							f_hbr:   { label: "Hotend fan",     short: "hte", c: "--maroon",   unit: "%",   fmt: F.pct },
 							f_chm:   { label: "Chamber fan",    short: "chf", c: "--yellow",   unit: "%",   fmt: F.pct },
@@ -450,7 +456,7 @@
 																		const s = meta(k), r = document.createElement("div"); r.className = "r"; r.style.setProperty("--c", `var(${s.c})`);
 																		const n = document.createElement("span"); n.textContent = s.label;
 																		const b = document.createElement("b"); const v = hist[k][i];
-																		b.textContent = s.state ? (s.state[v] ?? "—") : s.fmt(v) + (["rpm", "V", "mm"].includes(s.unit) ? " " + s.unit : "");
+																		b.textContent = s.state ? (s.state[v] ?? "—") : s.fmt(v) + (["rpm", "V", "mm", "A"].includes(s.unit) ? " " + s.unit : "");
 																		if (s.target && hist[s.target] && hist[s.target][i] > 0) b.textContent += " / " + Math.round(hist[s.target][i]) + "°";
 																		r.append(document.createElement("i"), n, b); tip.append(r);
 																	}
@@ -484,8 +490,10 @@
 															const BOXES = [
 															{ id: "temps", title: "temps", merged: () => ["noz", "bed", "chm"], lanes: () => ["noz", "bed", "chm"], y: "auto0", h: 160 },
 															{ id: "fans", title: "fans", merged: fans, lanes: fans, y: () => (unit === "pct" && avail("f_print") ? [0, 100] : "zero"), h: 160, unit: true },
-															{ id: "elec", title: "electronics", merged: () => ["hbr", "brd", "mcu"], lanes: () => ["hbr", "brd", "mcu"], y: "auto", h: 120 },
-															{ id: "misc", title: "z · 24v · io", merged: () => ["z"], io: true, rowsKeys: () => ["z", "v24"], lanes: () => ["z", "v24", "door", "fil"], y: "zero", h: 120 },
+															{ id: "heat", title: "heater duty", merged: () => ["p_noz", "p_bed"], lanes: () => ["p_noz", "p_bed"], y: [0, 100], h: 120 },
+															{ id: "power", title: "power", merged: () => ["i_in", "i_heat"], rowsKeys: () => ["i_in", "i_heat", "v24"], lanes: () => ["i_in", "i_heat", "v24"], y: "zero", h: 120 },
+															{ id: "elec", title: "electronics", merged: () => ["hbr", "brd", "mcu"], rowsKeys: () => ["hbr", "brd", "mcu", "cpu"], lanes: () => ["hbr", "brd", "mcu", "cpu"], y: "auto", h: 120 },
+															{ id: "misc", title: "z · io", merged: () => ["z"], io: true, lanes: () => ["z", "door", "fil"], y: "zero", h: 120 },
 															];
 															
 															function meter(frac, n) {
@@ -650,7 +658,7 @@
 																					for (const c of charts) c.draw();
 																					header(); values();
 																				}
-																				hoverFns.add((src) => { values(); tip.show([["noz", "bed", "chm"], fans(), ["hbr", "brd", "mcu"], ["z", "v24"]], src); });
+																				hoverFns.add((src) => { values(); tip.show([["noz", "bed", "chm"], fans(), ["p_noz", "p_bed"], ["i_in", "i_heat", "v24"], ["hbr", "brd", "mcu", "cpu"], ["z", "door", "fil"]], src); });
 																				window.addEventListener("cam", (e) => { camMode = e.detail; values(); });
 																				document.addEventListener("visibilitychange", () => { if (!document.hidden) loadHistory().then(redraw).catch(() => {}); });
 																				

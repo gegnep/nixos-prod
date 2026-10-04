@@ -34,7 +34,8 @@ HTTP_BIND = env("PRINTCAM_BIND", "0.0.0.0")
 HTTP_PORT = int(env("PRINTCAM_PORT", "1986"))
 UDP_PORT = int(env("PRINTCAM_METRICS_PORT", "8514"))
 PRINTER = env("PRUSALINK_HOST")
-METRICS_FROM = env("PRINTCAM_METRICS_FROM", (PRINTER or "").split(":")[0] or None)
+# Comma-separated: a printer on Ethernet + Wi-Fi can send UDP from either IP.
+METRICS_FROM = {a.strip() for a in env("PRINTCAM_METRICS_FROM", (PRINTER or "").split(":")[0]).split(",") if a.strip()}
 PL_USER = env("PRUSALINK_USER", "maker")
 PL_PASS_FILE = env("PRUSALINK_PASSWORD_FILE")
 STREAM = env("PRINTCAM_STREAM", "coreone")
@@ -45,20 +46,32 @@ HISTORY_H = float(env("PRINTCAM_HISTORY_H", "12"))
 UDP_STALE_S = float(env("PRINTCAM_UDP_STALE_S", "6"))
 
 # page key -> metric. m: metric name, tags: required tag values,
-# f: field ("v" for plain metrics, "value"/"pwm"/... for custom ones),
-# scale: multiplier, agg: how /history buckets it ("mean" | "max" | "min").
+# f: field ("v" for plain metrics, "value"/"pwm"/"st"/... for custom ones).
+# Transforms, applied in this order: abs, map ({"raw": out}, unmapped -> null),
+# ranges ([[lo, hi, out], ...], lo <= v < hi, no match -> null), scale.
+# agg: how /history buckets it ("mean" | "max" | "min").
+# Names/encodings verified against Buddy fw 6.8.1 source + a live Core One+ dump.
 UDP_MAP = {
     "chm": {"m": "chamber_temp"},
     "hbr": {"m": "temp_hbr", "tags": {"a": "1"}, "f": "value"},
     "brd": {"m": "temp_brd"},
-    "mcu": {"m": "temp_mcu"},
-    "v24": {"m": "24VVoltage"},
+    "mcu": {"m": "temp_mcu"},  # fw records it every loop (~900/s): leave it off on the printer unless wanted
+    "cpu": {"m": "cpu_usage"},
     "f_print": {"m": "fan", "tags": {"fan": "print"}, "f": "pwm"},
     "f_hbr": {"m": "fan", "tags": {"fan": "heatbreak"}, "f": "pwm"},
     "f_chm": {"m": "xbe_fan", "tags": {"fan": "1"}, "f": "pwm", "scale": 100 / 255},
     "r_chm": {"m": "xbe_fan", "tags": {"fan": "1"}, "f": "rpm"},
     "f_flt": {"m": "xbe_fan", "tags": {"fan": "3"}, "f": "pwm", "scale": 100 / 255},
     "r_flt": {"m": "xbe_fan", "tags": {"fan": "3"}, "f": "rpm"},
+    "p_noz": {"m": "nozzle_pwm", "scale": 100 / 255},
+    "p_bed": {"m": "bed_pwm", "scale": 100 / 255},
+    "v24": {"m": "bed_voltage"},  # Core One has no 24VVoltage metric
+    "i_in": {"m": "input_current", "abs": True},  # reads negative on the Core One+
+    "i_heat": {"m": "heater_current"},
+    # 12-bit ADC: < 0x3ff closed, < 0xcff open, above = sensor detached (null)
+    "door": {"m": "door_sensor", "ranges": [[0, 1023, 0], [1023, 3327, 1]], "agg": "max"},
+    # FilamentSensorState: 2 HasFilament, 3 NoFilament; the rest (uncalibrated, disabled, ...) -> null
+    "fil": {"m": "fsensor", "tags": {"n": "0"}, "f": "st", "map": {"2": 1, "3": 0}, "agg": "min"},
 }
 UDP_MAP.update(json.loads(env("PRINTCAM_UDP_MAP", "{}")))
 UDP_MAP = {k: v for k, v in UDP_MAP.items() if v}  # null in Nix = drop a default
@@ -154,10 +167,10 @@ def handle_datagram(data):
 def udp_loop():
     s = socket.socket(socket.AF_INET, socket.SOCK_DGRAM)
     s.bind(("0.0.0.0", UDP_PORT))
-    log(f"udp metrics on :{UDP_PORT}" + (f" (from {METRICS_FROM})" if METRICS_FROM else ""))
+    log(f"udp metrics on :{UDP_PORT}" + (f" (from {', '.join(sorted(METRICS_FROM))})" if METRICS_FROM else ""))
     while True:
         data, addr = s.recvfrom(4096)
-        if METRICS_FROM and addr[0] != METRICS_FROM:
+        if METRICS_FROM and addr[0] not in METRICS_FROM:
             continue
         try:
             handle_datagram(data)
@@ -180,7 +193,18 @@ def udp_value(spec, now):
             best = (v, t)
     if best is None:
         return None
-    return round(best[0] * spec.get("scale", 1), 2)
+    v = best[0]
+    if spec.get("abs"):
+        v = abs(v)
+    if "map" in spec:
+        v = spec["map"].get(str(int(v)))
+        if v is None:
+            return None
+    if "ranges" in spec:
+        v = next((out for lo, hi, out in spec["ranges"] if lo <= v < hi), None)
+        if v is None:
+            return None
+    return round(v * spec.get("scale", 1), 2)
 
 
 # ---------------------------------------------------------------- PrusaLink

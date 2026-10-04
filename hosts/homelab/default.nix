@@ -101,6 +101,10 @@
         enable = true;
         cameraHost = "10.0.0.242"; # Buddy3D Cam
         collector.printerHost = "10.0.0.36"; # Core One+ (PrusaLink + UDP metrics)
+        collector.metricsSources = [
+          "10.0.0.36"
+          "10.0.0.180"
+        ]; # eth + wifi
       };
 
       ollama = {

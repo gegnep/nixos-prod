@@ -152,6 +152,20 @@ in
           Needs a DHCP reservation. null = collector off.
         '';
       };
+      metricsSources = lib.mkOption {
+        type = lib.types.listOf lib.types.str;
+        default = lib.optional (col.printerHost != null) col.printerHost;
+        defaultText = lib.literalExpression "[ printerHost ]";
+        example = [
+          "10.0.0.36"
+          "10.0.0.180"
+        ];
+        description = ''
+          Source IPs accepted for UDP metrics (firewall + collector). A printer on
+          Ethernet AND Wi-Fi answers PrusaLink on one IP but may send metrics from
+          the other, so list both.
+        '';
+      };
       user = lib.mkOption {
         type = lib.types.str;
         default = "maker";
@@ -171,17 +185,17 @@ in
         type = lib.types.attrsOf (lib.types.nullOr (lib.types.attrsOf lib.types.anything));
         default = { };
         example = {
-          door = {
-            m = "door_sensor";
-            agg = "max";
+          mcu = null; # drop a default
+          heater_v = {
+            m = "heater_voltage";
           };
-          f_flt = null;
         };
         description = ''
           Overrides/additions to the collector's page-key -> UDP metric map
           (defaults live in collector.py). m = metric, tags = required tags,
-          f = field ("v" plain, "value"/"pwm"/"rpm" custom), scale, agg
-          (mean|max|min for /history buckets). null drops a default.
+          f = field ("v" plain, "value"/"pwm"/"rpm"/"st" custom), abs, map,
+          ranges, scale, agg (mean|max|min for /history buckets). null drops a
+          default. A new key also needs a series entry in index.html to show up.
         '';
       };
     };
@@ -324,6 +338,7 @@ in
           PRINTCAM_INDEX = "${./index.html}";
           PRINTCAM_HISTORY_H = toString col.historyHours;
           PRINTCAM_UDP_MAP = builtins.toJSON col.udpMap;
+          PRINTCAM_METRICS_FROM = lib.concatStringsSep "," col.metricsSources;
           PRUSALINK_HOST = col.printerHost;
           PRUSALINK_USER = col.user;
           # %d is CREDENTIALS_DIRECTORY: systemd copies the sops secret there
@@ -364,11 +379,11 @@ in
       };
 
       networking.firewall.interfaces."tailscale0".allowedTCPPorts = [ col.port ];
-      # Metrics come from the printer's IP only, whatever interface they arrive on.
+      # Metrics only from the printer's own IPs, whatever interface they arrive on.
       # nixos-fw is flushed on every reload, so no matching extraStopCommands.
-      networking.firewall.extraCommands = ''
-        iptables -w -A nixos-fw -p udp -s ${col.printerHost} --dport ${toString col.metricsPort} -j nixos-fw-accept
-      '';
+      networking.firewall.extraCommands = lib.concatMapStrings (src: ''
+        iptables -w -A nixos-fw -p udp -s ${src} --dport ${toString col.metricsPort} -j nixos-fw-accept
+      '') col.metricsSources;
     })
 
     (lib.mkIf cfg.edge.enable {
