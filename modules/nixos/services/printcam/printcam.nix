@@ -1,23 +1,28 @@
-# Core One+ (Gen2) camera: go2rtc restream + Prusa Connect snapshot pusher + public edge.
+# Core One+ (Gen2) camera + telemetry: go2rtc restream, Prusa Connect snapshot
+# pusher, telemetry collector + dashboard, public edge.
 #
-# Two roles, one module, so the stream name and upstream port stay coupled:
+# Two roles, one module, so the stream name and upstream ports stay coupled:
 #   homelab: mySystem.services.printcam.enable
 #     go2rtc holds the ONLY RTSP session to the Buddy3D (preloaded, so it stays
 #     hot), serves MSE/MP4/MJPEG over /api/ws, and a push loop PUTs a fresh JPEG
 #     to Connect's Camera API every `connect.interval` seconds.
+#     printcam-collector polls PrusaLink, receives the firmware's UDP metrics,
+#     keeps a ring buffer, and serves the dashboard (/) plus /printer/* JSON.
 #   ovh:     mySystem.services.printcam.edge.enable
 #     https://<edge.sub>.pengeg.com, Caddy basic_auth for the listed users, and a
-#     path+query allowlist in front of go2rtc. go2rtc's API can create exec:
-#     sources, so it must never be exposed unfiltered.
+#     path+query allowlist in front of go2rtc and the collector. go2rtc's API can
+#     create exec: sources, so it must never be exposed unfiltered.
 {
   config,
   lib,
   pkgs,
+  mkFailureUnit,
   ...
 }:
 
 let
   cfg = config.mySystem.services.printcam;
+  col = cfg.collector;
   notify = config.mySystem.notify;
 
   push = pkgs.writeShellApplication {
@@ -63,6 +68,13 @@ let
       done
     '';
   };
+
+  collector = pkgs.writers.writePython3Bin "printcam-collector" {
+    flakeIgnore = [
+      "E501"
+      "E265"
+    ];
+  } (builtins.readFile ./collector.py);
 
   # A missing env var is a Caddyfile parse error, and Caddy then refuses the
   # WHOLE config (ntfy, p, mcp go down with the cam). Fall back to a bcrypt hash
@@ -122,6 +134,58 @@ in
       };
     };
 
+    collector = {
+      enable = lib.mkEnableOption "telemetry collector + dashboard" // {
+        default = true;
+      };
+      port = lib.mkOption {
+        type = lib.types.port;
+        default = 1986;
+        description = "Collector HTTP port (dashboard + /printer/* JSON). Loopback and tailscale0.";
+      };
+      printerHost = lib.mkOption {
+        type = lib.types.nullOr lib.types.str;
+        default = null;
+        example = "10.0.0.36";
+        description = ''
+          Core One IP: PrusaLink target and the only accepted source of UDP metrics.
+          Needs a DHCP reservation. null = collector off.
+        '';
+      };
+      user = lib.mkOption {
+        type = lib.types.str;
+        default = "maker";
+        description = "PrusaLink digest user (printer: Settings > Network > PrusaLink).";
+      };
+      metricsPort = lib.mkOption {
+        type = lib.types.port;
+        default = 8514;
+        description = "UDP port the printer's Metrics & Log handler sends to.";
+      };
+      historyHours = lib.mkOption {
+        type = lib.types.ints.positive;
+        default = 12;
+        description = "Ring buffer length. Must cover the longest print you want graphed whole.";
+      };
+      udpMap = lib.mkOption {
+        type = lib.types.attrsOf (lib.types.nullOr (lib.types.attrsOf lib.types.anything));
+        default = { };
+        example = {
+          door = {
+            m = "door_sensor";
+            agg = "max";
+          };
+          f_flt = null;
+        };
+        description = ''
+          Overrides/additions to the collector's page-key -> UDP metric map
+          (defaults live in collector.py). m = metric, tags = required tags,
+          f = field ("v" plain, "value"/"pwm"/"rpm" custom), scale, agg
+          (mean|max|min for /history buckets). null drops a default.
+        '';
+      };
+    };
+
     edge = {
       enable = lib.mkEnableOption "public auth-gated vhost for the camera (ovh)";
       sub = lib.mkOption {
@@ -132,6 +196,11 @@ in
         type = lib.types.str;
         default = "100.68.176.20:${toString cfg.port}";
         description = "homelab go2rtc over the tailnet.";
+      };
+      collectorUpstream = lib.mkOption {
+        type = lib.types.str;
+        default = "100.68.176.20:${toString col.port}";
+        description = "homelab printcam-collector over the tailnet.";
       };
       users = lib.mkOption {
         type = lib.types.attrsOf lib.types.str;
@@ -178,13 +247,28 @@ in
 
       networking.firewall.interfaces."tailscale0".allowedTCPPorts = [ cfg.port ];
 
+      # cam.homelab: dashboard + /printer/* from the collector, everything else
+      # (stream.html, the go2rtc UI, /api/*) straight to go2rtc. LAN-only, no auth.
       mySystem.proxy.vhosts.printcam = {
         sub = "cam";
-        upstream = "127.0.0.1:${toString cfg.port}";
+        rawConfig =
+          if col.enable && col.printerHost != null then
+            ''
+              encode zstd gzip
+              @collector path / /index.html /printer/*
+              handle @collector {
+                reverse_proxy 127.0.0.1:${toString col.port}
+              }
+              handle {
+                reverse_proxy 127.0.0.1:${toString cfg.port}
+              }
+            ''
+          else
+            "reverse_proxy 127.0.0.1:${toString cfg.port}";
         dashboard = {
           name = "Core One cam";
-          description = "go2rtc";
-          path = "/stream.html?src=${cfg.stream}";
+          description = "go2rtc + telemetry";
+          path = if col.enable && col.printerHost != null then "/" else "/stream.html?src=${cfg.stream}";
         };
       };
     })
@@ -223,6 +307,70 @@ in
       };
     })
 
+    (lib.mkIf (cfg.enable && col.enable && col.printerHost != null) {
+      sops.secrets.prusalink-password.restartUnits = [ "printcam-collector.service" ];
+
+      systemd.services.printcam-collector = {
+        description = "Core One telemetry collector + dashboard";
+        wantedBy = [ "multi-user.target" ];
+        after = [ "network-online.target" ];
+        wants = [ "network-online.target" ];
+        onFailure = [ "notify-printcam-collector-fail.service" ];
+
+        environment = {
+          PRINTCAM_PORT = toString col.port;
+          PRINTCAM_METRICS_PORT = toString col.metricsPort;
+          PRINTCAM_STREAM = cfg.stream;
+          PRINTCAM_INDEX = "${./index.html}";
+          PRINTCAM_HISTORY_H = toString col.historyHours;
+          PRINTCAM_UDP_MAP = builtins.toJSON col.udpMap;
+          PRUSALINK_HOST = col.printerHost;
+          PRUSALINK_USER = col.user;
+          # %d is CREDENTIALS_DIRECTORY: systemd copies the sops secret there
+          # as root at start, readable by the dynamic uid.
+          PRUSALINK_PASSWORD_FILE = "%d/prusalink";
+        };
+
+        serviceConfig = {
+          ExecStart = lib.getExe collector;
+          Restart = "on-failure";
+          RestartSec = 10;
+          # SIGTERM -> history.json flush; give it time on a slow disk.
+          TimeoutStopSec = 20;
+
+          DynamicUser = true;
+          StateDirectory = "printcam-collector";
+          LoadCredential = [ "prusalink:${config.sops.secrets.prusalink-password.path}" ];
+
+          NoNewPrivileges = true;
+          PrivateTmp = true;
+          ProtectSystem = "strict";
+          ProtectHome = true;
+          ProtectKernelTunables = true;
+          ProtectControlGroups = true;
+          RestrictAddressFamilies = [
+            "AF_UNIX"
+            "AF_INET"
+            "AF_INET6"
+          ];
+        };
+      };
+
+      systemd.services.notify-printcam-collector-fail = mkFailureUnit {
+        name = "printcam-collector";
+        title = "printcam collector failed";
+        body = "printcam-collector.service entered failed state. Check journalctl -u printcam-collector.";
+        tags = "camera,warning";
+      };
+
+      networking.firewall.interfaces."tailscale0".allowedTCPPorts = [ col.port ];
+      # Metrics come from the printer's IP only, whatever interface they arrive on.
+      # nixos-fw is flushed on every reload, so no matching extraStopCommands.
+      networking.firewall.extraCommands = ''
+        iptables -w -A nixos-fw -p udp -s ${col.printerHost} --dport ${toString col.metricsPort} -j nixos-fw-accept
+      '';
+    })
+
     (lib.mkIf cfg.edge.enable {
       assertions = [
         {
@@ -249,23 +397,36 @@ in
           ${basicAuthUsers}
           }
 
-          # Bare domain -> player URL. A redirect, NOT a rewrite: stream.html reads
-          # the stream name from the browser's location.search, which a rewrite
-          # never changes (rewrite = empty player = black page).
-          @root path /
-          redir @root /stream.html?src=${cfg.stream}&mode=mse,mp4 302
+          encode zstd gzip
 
-          @page path /stream.html
+          # Pages: the dashboard (collector) and the bare go2rtc player (fallback).
+          @home path /
+          @player path /stream.html
           @assets path /video-stream.js /video-rtc.js
           @api {
             path /api/ws /api/frame.jpeg
             query src=${cfg.stream}
           }
+          # /printer/metrics (raw UDP dump) stays LAN-only.
+          @printer path /printer/status /printer/history /printer/thumb
 
           # Inside handle = after basic_auth, so a 401 never carries the cookie.
-          handle @page {
+          handle @home {
+            header Set-Cookie "printcam_session={${session}}; Path=/; Max-Age=2592000; Secure; HttpOnly; SameSite=Strict"
+            reverse_proxy ${cfg.edge.collectorUpstream} {
+              header_up -Authorization
+              header_up -Cookie
+            }
+          }
+          handle @player {
             header Set-Cookie "printcam_session={${session}}; Path=/; Max-Age=2592000; Secure; HttpOnly; SameSite=Strict"
             reverse_proxy ${cfg.edge.upstream} {
+              header_up -Authorization
+              header_up -Cookie
+            }
+          }
+          handle @printer {
+            reverse_proxy ${cfg.edge.collectorUpstream} {
               header_up -Authorization
               header_up -Cookie
             }

@@ -1,0 +1,666 @@
+<!DOCTYPE html>
+<html lang="en">
+	<head>
+		<meta charset="utf-8">
+		<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+		<meta name="theme-color" content="#11111b">
+		<title>Core One</title>
+		<style>
+			/* Catppuccin Mocha */
+			:root {
+				color-scheme: dark;
+				--crust: #11111b; --mantle: #181825; --base: #1e1e2e;
+				--surface0: #313244; --surface1: #45475a; --surface2: #585b70;
+				--overlay0: #6c7086; --overlay1: #7f849c; --overlay2: #9399b2;
+				--subtext0: #a6adc8; --subtext1: #bac2de; --text: #cdd6f4;
+				--flamingo: #f2cdcd; --pink: #f5c2e7; --mauve: #cba6f7; --red: #f38ba8; --maroon: #eba0ac;
+				--peach: #fab387; --yellow: #f9e2af; --green: #a6e3a1; --teal: #94e2d5; --sky: #89dceb;
+				--sapphire: #74c7ec; --blue: #89b4fa; --lavender: #b4befe;
+				--mono: ui-monospace, "JetBrainsMono Nerd Font", "JetBrains Mono", "Iosevka", "SF Mono", Menlo, Consolas, monospace;
+				--sans: system-ui, -apple-system, "Segoe UI", sans-serif;
+			}
+			* { box-sizing: border-box; }
+			[hidden] { display: none !important; }
+			html, body { margin: 0; }
+			body { background: var(--crust); color: var(--text); font: 14px/1.4 var(--sans); -webkit-font-smoothing: antialiased; }
+			button { font: inherit; color: inherit; }
+			:focus-visible { outline: 2px solid var(--lavender); outline-offset: 2px; }
+			.wrap { max-width: 1800px; margin: 0 auto; padding: max(12px, env(safe-area-inset-top)) 12px 24px; display: grid; gap: 10px; }
+			
+			/* ---------- header ---------- */
+			.hd { background: var(--base); border: 1px solid var(--surface1); border-radius: 6px; padding: 12px 14px 10px;
+			display: grid; grid-template-columns: auto minmax(0, 1fr) auto; grid-template-areas: "img id pct" "bar bar bar" "st st st"; gap: 8px 14px; align-items: center; }
+			.hd img { grid-area: img; width: 84px; aspect-ratio: 4 / 3; object-fit: contain; border-radius: 4px; background: var(--mantle); }
+			.id { grid-area: id; min-width: 0; }
+			.chips { display: flex; flex-wrap: wrap; gap: 4px 6px; font: 12px var(--mono); }
+			.chips span { padding: 1px 7px; border-radius: 3px; background: var(--surface0); color: var(--subtext1); }
+			.chips .state { background: var(--stc); color: var(--crust); font-weight: 700; display: inline-flex; gap: 5px; align-items: center; }
+			.chips .state svg { width: 10px; height: 10px; }
+			.title { font-size: 20px; font-weight: 650; line-height: 1.25; margin-top: 5px; overflow-wrap: anywhere; }
+			.pct { grid-area: pct; font: 700 38px/1 var(--mono); letter-spacing: -.03em; }
+			.bar { grid-area: bar; height: 10px; border-radius: 3px; background: var(--surface0); overflow: hidden; position: relative; }
+			.bar i { position: absolute; inset: 0 auto 0 0; background: var(--stc); transition: width .5s; }
+			.stats { grid-area: st; display: flex; flex-wrap: wrap; gap: 2px 18px; font: 12.5px var(--mono); color: var(--overlay1); }
+			.stats b { color: var(--text); font-weight: 600; }
+			.stats .sp { flex: 1; }
+			
+			/* ---------- feed ---------- */
+			.feed { position: relative; aspect-ratio: 16 / 9; max-height: calc(100svh - 24px); background: #000; border-radius: 6px; overflow: hidden; display: grid; place-items: center; }
+			cam-view { display: block; height: 100%; max-width: 100%; aspect-ratio: 16 / 9; }
+			cam-view video { object-fit: contain; background: #000; }
+			.feed:fullscreen { max-height: none; border-radius: 0; }
+			.fbtn { position: absolute; right: 8px; bottom: 8px; display: flex; gap: 6px; transition: opacity .15s; }
+			.fbtn a, .fbtn button { width: 32px; height: 32px; border: 0; border-radius: 5px; background: rgba(17,17,27,.7); display: grid; place-items: center; cursor: pointer; color: var(--text); }
+			.fbtn svg { width: 15px; height: 15px; }
+			@media (hover: hover) { .fbtn { opacity: 0; } .feed:hover .fbtn { opacity: 1; } }
+			
+			/* ---------- telemetry boxes ---------- */
+			.grid { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 10px; position: relative; font-family: var(--mono); }
+			.grid .wide { grid-column: 1 / -1; }
+			fieldset { margin: 0; min-width: 0; border: 1px solid var(--surface1); border-radius: 6px; padding: 4px 10px 8px; background: var(--base); }
+			legend { padding: 0 6px; color: var(--lavender); font-weight: 600; font-size: 12px; display: flex; gap: 8px; align-items: center; }
+			legend .opt { display: inline-flex; gap: 1px; }
+			legend .opt button { border: 0; background: none; color: var(--overlay1); cursor: pointer; padding: 0 5px; font: 500 12px var(--mono); border-radius: 3px; }
+			legend .opt button[aria-pressed="true"] { color: var(--crust); background: var(--lavender); }
+			legend .cur { color: var(--overlay1); font-weight: 500; }
+			.empty { color: var(--overlay0); font-size: 12px; padding: 18px 0; text-align: center; }
+			
+			.cc { position: relative; touch-action: pan-y; --bg: var(--base); }
+			.cc svg { display: block; width: 100%; overflow: visible; }
+			.cc .gl { stroke: var(--surface0); stroke-width: 1; }
+			.cc .bl { stroke: var(--surface1); stroke-width: 1; }
+			.cc .tk { fill: var(--overlay1); font: 10px var(--mono); font-variant-numeric: tabular-nums; }
+			.cc .ln { fill: none; stroke-width: 1.75; stroke-linejoin: round; stroke-linecap: round; }
+			.cc .tg { fill: none; stroke-width: 1.25; stroke-dasharray: 3 4; opacity: .6; }
+			.cc .ev { stroke: var(--overlay0); stroke-width: 1; stroke-dasharray: 2 3; }
+			.cc .evl { fill: var(--overlay1); font-size: 10px; paint-order: stroke; stroke: var(--bg); stroke-width: 4px; stroke-linejoin: round; }
+			.cc .xh { stroke: var(--subtext1); stroke-width: 1; visibility: hidden; }
+			.cc .hd { stroke: var(--bg); stroke-width: 2; visibility: hidden; }
+			.cc.hov .xh, .cc.hov .hd { visibility: visible; }
+			
+			.rows { display: grid; grid-template-columns: auto minmax(0, 1fr) auto auto auto; gap: 0 14px; margin-top: 4px; font-size: 12px; }
+			.rows .k { color: var(--c); font-weight: 600; }
+			.rows .v { text-align: right; font-weight: 600; }
+			.rows .d { color: var(--overlay1); text-align: right; }
+			.rows .m { color: var(--c); overflow: hidden; white-space: nowrap; letter-spacing: -1px; opacity: .85; }
+			.rows .m s { text-decoration: none; color: var(--surface1); }
+			
+			.lane { display: grid; grid-template-columns: 116px minmax(0, 1fr); border-top: 1px solid var(--surface0); }
+			.lane:first-child { border-top: 0; }
+			.gut { display: flex; flex-direction: column; justify-content: center; padding: 2px 8px 2px 0; }
+			.gut .l { font-size: 11px; color: var(--c); font-weight: 600; }
+			.gut .v { font-size: 14px; font-weight: 600; white-space: nowrap; }
+			.gut .v small { font-size: 10.5px; color: var(--overlay1); font-weight: 500; }
+			.gut .v.bad { color: var(--red); }
+			
+			.kv { display: grid; grid-template-columns: repeat(auto-fill, minmax(190px, 1fr)); gap: 2px 18px; font-size: 12px; }
+			.kv div { display: flex; justify-content: space-between; gap: 8px; border-bottom: 1px dotted var(--surface0); padding: 2px 0; }
+			.kv span { color: var(--overlay1); }
+			.kv b { font-weight: 600; }
+			.kv b.bad { color: var(--red); } .kv b.ok { color: var(--green); }
+			
+			.ctip { position: absolute; z-index: 20; pointer-events: none; min-width: 170px; padding: 8px 10px; border-radius: 6px;
+			background: var(--mantle); border: 1px solid var(--surface1); box-shadow: 0 8px 24px rgba(0,0,0,.45); font-size: 12px; display: none; }
+			.ctip.on { display: block; }
+			.ctip .tt { color: var(--overlay1); margin-bottom: 4px; }
+			.ctip .r { display: grid; grid-template-columns: 12px 1fr auto; gap: 6px; align-items: center; }
+			.ctip .r i { height: 0; border-top: 2px solid var(--c); }
+			.ctip .r span { color: var(--subtext0); }
+			.ctip .r b { font-weight: 600; text-align: right; font-variant-numeric: tabular-nums; }
+			.ctip hr { border: 0; border-top: 1px solid var(--surface0); margin: 5px 0; }
+			
+			@media (max-width: 760px) {
+				.wrap { padding: 8px 8px 16px; gap: 8px; }
+				.feed { margin-inline: -8px; border-radius: 0; }
+				.grid { grid-template-columns: 1fr; }
+				.hd { grid-template-columns: auto minmax(0, 1fr); grid-template-areas: "img pct" "id id" "bar bar" "st st"; padding: 10px; }
+				.hd img { width: 64px; }
+				.pct { text-align: right; font-size: 30px; }
+				.title { font-size: 16px; }
+				.rows { grid-template-columns: auto minmax(0, 1fr) auto auto; }
+				.rows .lo { display: none; }
+				.lane { grid-template-columns: 92px minmax(0, 1fr); }
+				.kv { grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 2px 12px; font-size: 11.5px; }
+			}
+		</style>
+	</head>
+	<body>
+		<div class="wrap">
+			<header class="hd" id="hd">
+				<img id="thumb" alt="" hidden>
+				<div class="id"><div class="chips" id="chips"></div><div class="title" id="title">connecting…</div></div>
+				<div class="pct" id="pct"></div>
+				<div class="bar"><i id="bar"></i></div>
+				<div class="stats" id="stats"></div>
+			</header>
+
+			<section class="feed" id="feed">
+				<div class="fbtn">
+					<a href="api/frame.jpeg?src=__STREAM__" download="coreone.jpg" title="Save snapshot"><svg viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.5"><path d="M2 5h3l1.5-2h3L11 5h3v8H2z"/><circle cx="8" cy="9" r="2.5"/></svg></a>
+					<button title="Fullscreen" id="fs"><svg viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.5"><path d="M2 6V2h4M10 2h4v4M14 10v4h-4M6 14H2v-4"/></svg></button>
+				</div>
+			</section>
+
+			<div class="grid" id="grid">
+				<fieldset class="wide"><legend>range <span class="opt" id="rng"></span>
+					<span class="cur" id="cur"></span></legend><div class="kv" id="kv"></div></fieldset>
+			</div>
+		</div>
+
+		<!-- go2rtc player without its overlay: VideoRTC straight from go2rtc's /video-rtc.js -->
+		<script type="module">
+			import { VideoRTC } from "./video-rtc.js";
+			const say = (m) => window.dispatchEvent(new CustomEvent("cam", { detail: m }));
+			class CamView extends VideoRTC {
+				oninit() {
+					super.oninit();
+					this.video.controls = false;
+					this.video.muted = true;
+				}
+				onconnect() { const r = super.onconnect(); if (r) say("connecting"); return r; }
+				onopen() {
+					const r = super.onopen();
+					this.onmessage.status = (m) => { if (["mse", "mp4", "hls", "mjpeg", "error"].includes(m.type)) say(m.type); };
+					return r;
+				}
+				onclose() { say("reconnecting"); return super.onclose(); }
+			}
+			customElements.define("cam-view", CamView);
+			const cam = document.createElement("cam-view");
+			cam.mode = "mse,mp4";
+			cam.src = new URL("api/ws?src=__STREAM__", location.href);
+			document.getElementById("feed").prepend(cam);
+			document.getElementById("fs").onclick = () => {
+				const f = document.getElementById("feed");
+				if (document.fullscreenElement) document.exitFullscreen();
+				else if (f.requestFullscreen) f.requestFullscreen().catch(() => {});
+				else if (cam.video && cam.video.webkitEnterFullscreen) cam.video.webkitEnterFullscreen(); // iPhone
+				};
+		</script>
+
+		<script>
+			"use strict";
+			(() => {
+				// ================================================================ data
+				const hist = { t: [] };
+				let st = null;                 // last /printer/status
+				let evs = [];                  // events from /printer/history
+				let camMode = "connecting";
+				const $ = (id) => document.getElementById(id);
+				const clamp = (x, a, b) => Math.min(b, Math.max(a, x));
+				const pref = {
+					get(k, d) { try { return localStorage.getItem("printcam." + k) ?? d; } catch { return d; } },
+					set(k, v) { try { localStorage.setItem("printcam." + k, v); } catch {} },
+					};
+					let range = pref.get("range", "job"), unit = pref.get("unit", "pct");
+					
+					// ---------- formatting ----------
+					const pad2 = (n) => String(n).padStart(2, "0");
+					const dur = (s) => { if (s == null) return "—"; s = Math.max(0, Math.round(s)); const h = Math.floor(s / 3600), m = Math.floor((s % 3600) / 60); return h ? `${h}h ${pad2(m)}m` : `${m}m`; };
+					const clock = (t) => new Date(t * 1000).toLocaleTimeString([], { hour: "numeric", minute: "2-digit" });
+					const clockS = (t) => new Date(t * 1000).toLocaleTimeString([], { hour: "numeric", minute: "2-digit", second: "2-digit" });
+					const F = {
+						temp: (v) => (v == null ? "—" : (+v).toFixed(1) + "°"),
+						pct: (v) => (v == null ? "—" : Math.round(v) + "%"),
+						rpm: (v) => (v == null ? "—" : Math.round(v).toLocaleString()),
+						mm: (v) => (v == null ? "—" : (+v).toFixed(2)),
+						volt: (v) => (v == null ? "—" : (+v).toFixed(2)),
+						};
+						const S = {
+							noz:     { label: "Nozzle",         short: "noz", c: "--peach",    unit: "°",   fmt: F.temp, target: "noz_t" },
+							bed:     { label: "Bed",            short: "bed", c: "--mauve",    unit: "°",   fmt: F.temp, target: "bed_t" },
+							chm:     { label: "Chamber",        short: "chm", c: "--teal",     unit: "°",   fmt: F.temp },
+							hbr:     { label: "Heatbreak",      short: "hbr", c: "--red",      unit: "°",   fmt: F.temp },
+							brd:     { label: "Board",          short: "brd", c: "--sapphire", unit: "°",   fmt: F.temp },
+							mcu:     { label: "MCU",            short: "mcu", c: "--green",    unit: "°",   fmt: F.temp },
+							f_print: { label: "Print fan",      short: "prt", c: "--blue",     unit: "%",   fmt: F.pct },
+							f_hbr:   { label: "Hotend fan",     short: "hte", c: "--maroon",   unit: "%",   fmt: F.pct },
+							f_chm:   { label: "Chamber fan",    short: "chf", c: "--yellow",   unit: "%",   fmt: F.pct },
+							f_flt:   { label: "Filtration fan", short: "flt", c: "--mauve",    unit: "%",   fmt: F.pct },
+							r_print: { label: "Print fan",      short: "prt", c: "--blue",     unit: "rpm", fmt: F.rpm },
+							r_hbr:   { label: "Hotend fan",     short: "hte", c: "--maroon",   unit: "rpm", fmt: F.rpm },
+							r_chm:   { label: "Chamber fan",    short: "chf", c: "--yellow",   unit: "rpm", fmt: F.rpm },
+							r_flt:   { label: "Filtration fan", short: "flt", c: "--mauve",    unit: "rpm", fmt: F.rpm },
+							z:       { label: "Z height",       short: "z",   c: "--sky",      unit: "mm",  fmt: F.mm },
+							v24:     { label: "24V rail",       short: "24v", c: "--lavender", unit: "V",   fmt: F.volt },
+							door:    { label: "Door",           short: "door", c: "--overlay2", state: ["closed", "open"] },
+							fil:     { label: "Filament",       short: "fil", c: "--overlay2", state: ["out", "present"] },
+							};
+							const meta = (k) => S[k] || { label: k, short: k, c: "--overlay2", unit: "", fmt: (v) => (v == null ? "—" : String(v)) };
+							
+							// ---------- derived ----------
+							const now = () => hist.t.length ? hist.t[hist.t.length - 1] : (st ? st.t : Date.now() / 1000);
+							const last = () => hist.t.length - 1;
+							const jobOf = () => (st && (st.job || st.last_job)) || null;
+							const active = () => !!(st && st.job);
+							let availSet = new Set();
+							function recomputeAvail() {
+								availSet = new Set(Object.keys(hist).filter((k) => k !== "t" && hist[k].some((v) => v != null)));
+							}
+							const avail = (k) => availSet.has(k);
+							const fanKey = (which) => (unit === "pct" && avail("f_" + which) ? "f_" : "r_") + which;
+							
+							function win(r = range) {
+								const t1 = now();
+								if (r !== "job") return [t1 - +r, t1];
+								const j = jobOf();
+								if (j && j.start && t1 - j.start < 12 * 3600) return [j.start - 300, t1];
+								return [t1 - 3600, t1];
+							}
+							function bsearch(x) {
+								const a = hist.t; let lo = 0, hi = a.length - 1;
+								if (hi < 0) return 0;
+								while (lo < hi) { const m = (lo + hi) >> 1; if (a[m] < x) lo = m + 1; else hi = m; }
+								if (lo > 0 && Math.abs(a[lo - 1] - x) < Math.abs(a[lo] - x)) lo--;
+								return lo;
+							}
+							function stats(k, t0, t1) {
+								const a = hist[k] || [], i0 = bsearch(t0), i1 = bsearch(t1);
+								let lo = Infinity, hi = -Infinity;
+								for (let i = i0; i <= i1; i++) { const x = a[i]; if (x == null) continue; if (x < lo) lo = x; if (x > hi) hi = x; }
+								return { min: isFinite(lo) ? lo : null, max: isFinite(hi) ? hi : null };
+							}
+							function parseName(d) {
+								d = d || "";
+								const ext = (/\.b?gcode$/i.exec(d) || [""])[0];
+								const m = /^(.+?)_(\d+(?:\.\d+)?)n_(\d+(?:\.\d+)?)mm_([A-Za-z0-9+\-]+)_([A-Za-z0-9]+)_((?:\d+d)?(?:\d+h)?\d+m)\.b?gcode$/i.exec(d);
+								if (!m) return { title: d.slice(0, d.length - ext.length).replace(/_/g, " ") };
+								return { title: m[1].replace(/_/g, " "), nozzle: m[2], layer: m[3], material: m[4], est: m[6] };
+							}
+							
+							// ---------- fetching ----------
+							async function getJSON(url) {
+								const r = await fetch(url, { cache: "no-store", credentials: "same-origin" });
+								if (!r.ok) throw new Error(url + " " + r.status);
+								return r.json();
+							}
+							let loadedFor = "";
+							async function loadHistory() {
+								const [t0] = win();
+								const points = Math.round(clamp(innerWidth * 1.5, 600, 3000));
+								const h = await getJSON(`printer/history?since=${Math.floor(t0)}&points=${points}`);
+								for (const k of Object.keys(hist)) delete hist[k];
+								hist.t = h.t;
+								for (const k of h.keys) hist[k] = h[k];
+								evs = h.events || [];
+								loadedFor = range + "|" + ((jobOf() || {}).id ?? "");
+								recomputeAvail();
+							}
+							async function poll() {
+								try {
+									const prevState = st && st.state, prevJob = (jobOf() || {}).id;
+									st = await getJSON("printer/status");
+									const want = range + "|" + ((jobOf() || {}).id ?? "");
+									if (want !== loadedFor || st.state !== prevState || (jobOf() || {}).id !== prevJob) {
+										await loadHistory();
+										} else if (st.t > now() && st.v) {
+											hist.t.push(st.t);
+											for (const k of Object.keys(st.v)) { (hist[k] = hist[k] || new Array(hist.t.length - 1).fill(null)).push(st.v[k]); }
+											if (range !== "job") {
+												const cut = bsearch(st.t - +range - 60);
+												if (cut > 0) for (const k of Object.keys(hist)) hist[k].splice(0, cut);
+											}
+											for (const k of Object.keys(st.v)) if (st.v[k] != null) availSet.add(k);
+										}
+										redraw();
+										} catch (e) {
+											$("title").textContent = "collector unreachable";
+										}
+									}
+									
+									// ================================================================ charts
+									const charts = new Set(), hoverFns = new Set();
+									let hoverT = null;
+									const idx = () => (hoverT == null ? last() : bsearch(hoverT));
+									function setHover(t, src) { hoverT = t; for (const c of charts) c.placeHover(); for (const f of hoverFns) f(src); }
+									
+									const NS = "http://www.w3.org/2000/svg";
+									const el = (n, a = {}) => { const e = document.createElementNS(NS, n); for (const k in a) e.setAttribute(k, a[k]); return e; };
+									function niceStep(span, n) { const raw = span / n || 1, mag = Math.pow(10, Math.floor(Math.log10(raw))); return [1, 2, 2.5, 5, 10].map((m) => m * mag).find((s) => s >= raw); }
+									function domainY(series, i0, i1, mode) {
+										if (Array.isArray(mode)) return mode;
+										let lo = Infinity, hi = -Infinity;
+										for (const s of series) for (const k of [s.k, s.target]) {
+											if (!k || !hist[k]) continue; const a = hist[k];
+											for (let i = i0; i <= i1; i++) { const x = a[i]; if (x == null || (k === s.target && x <= 0)) continue; if (x < lo) lo = x; if (x > hi) hi = x; }
+										}
+										if (!isFinite(lo)) return [0, 1];
+										if (mode === "zero" || (mode === "auto0" && hi > 100)) lo = Math.min(0, lo);
+										const span = Math.max(hi - lo, 4);
+										return [lo === 0 ? 0 : lo - span * 0.06, hi + span * 0.06];
+									}
+									const kfmt = (q) => (Math.abs(q) >= 1000 ? (q / 1000).toFixed(q % 1000 ? 1 : 0) + "k" : String(+q.toFixed(2)));
+									
+									/* o: { series: () => [{k, area?, kind?: "state", on?}], h, y, yTicks, ml, mr, mt, mb, xAxis, domain, events, evLabels, grid } */
+									function chart(host, o) {
+										host.classList.add("cc");
+										const c = { host, o };
+										charts.add(c);
+										const toT = (e) => { const r = host.getBoundingClientRect(); return clamp(c.xinv(e.clientX - r.left), hist.t[0] ?? 0, now()); };
+										host.addEventListener("pointermove", (e) => { if (c.xinv && hist.t.length) setHover(toT(e), { c, e }); });
+										host.addEventListener("pointerleave", () => setHover(null));
+										host.tabIndex = 0;
+										host.addEventListener("keydown", (e) => {
+											if (e.key !== "ArrowLeft" && e.key !== "ArrowRight") return;
+											e.preventDefault();
+											const [t0, t1] = c.dom, s = (t1 - t0) / 80;
+											setHover(clamp((hoverT ?? now()) + (e.key === "ArrowRight" ? s : -s), t0, now()), { c });
+											});
+											host.addEventListener("blur", () => setHover(null));
+											new ResizeObserver(() => c.draw()).observe(host);
+											
+											c.draw = () => {
+												const W = host.clientWidth; if (!W) return;
+												const H = o.h, m = { l: o.ml ?? 36, r: o.mr ?? 6, t: o.mt ?? 6, b: o.mb ?? (o.xAxis ? 20 : 4) };
+												const pw = Math.max(10, W - m.l - m.r), ph = H - m.t - m.b;
+												const [t0, t1] = (c.dom = o.domain());
+												const i0 = bsearch(t0), i1 = last();
+												const series = o.series().filter((s) => avail(s.k)).map((s) => ({ ...meta(s.k), ...s }));
+												const line = series.filter((s) => s.kind !== "state");
+												const [lo, hi] = domainY(line, i0, i1, (typeof o.y === "function" ? o.y() : o.y) ?? "auto");
+												const x = (t) => m.l + ((t - t0) / (t1 - t0 || 1)) * pw;
+												const y = (v) => m.t + ph - ((v - lo) / (hi - lo || 1)) * ph;
+												Object.assign(c, { x, y });
+												c.xinv = (px) => t0 + ((px - m.l) / pw) * (t1 - t0);
+												
+												const svg = el("svg", { viewBox: `0 0 ${W} ${H}`, height: H });
+												if (o.grid !== false && line.length) {
+													const st = niceStep(hi - lo, o.yTicks ?? 4);
+													for (let v = Math.ceil(lo / st) * st; v <= hi + 1e-9; v += st) {
+														svg.append(el("line", { class: "gl", x1: m.l, x2: m.l + pw, y1: y(v), y2: y(v) }));
+														const tx = el("text", { class: "tk", x: m.l - 5, y: y(v) + 3.5, "text-anchor": "end" }); tx.textContent = kfmt(v); svg.append(tx);
+													}
+												}
+												svg.append(el("line", { class: "bl", x1: m.l, x2: m.l + pw, y1: m.t + ph, y2: m.t + ph }));
+												if (o.xAxis) {
+													const span = t1 - t0;
+													const st = [60, 300, 600, 900, 1800, 3600, 7200, 10800].find((s) => span / s <= Math.max(2, Math.floor(pw / 85))) || 10800;
+													for (let t = Math.ceil(t0 / st) * st; t <= t1; t += st) {
+														if (x(t) > m.l + pw - 26 || x(t) < m.l + 18) continue;
+														const tx = el("text", { class: "tk", x: x(t), y: H - 5, "text-anchor": "middle" }); tx.textContent = clock(t); svg.append(tx);
+													}
+												}
+												if (o.events !== false) {
+													let lastX = -1e9;
+													for (const ev of evs) {
+														if (ev.t < t0 || ev.t > t1) continue;
+														svg.append(el("line", { class: "ev", x1: x(ev.t), x2: x(ev.t), y1: m.t, y2: m.t + ph }));
+														if (o.evLabels && x(ev.t) - lastX > 64) { lastX = x(ev.t); const tx = el("text", { class: "evl", x: x(ev.t) + 4, y: m.t + 10 }); tx.textContent = ev.l; svg.append(tx); }
+													}
+												}
+												const stride = Math.max(1, Math.floor((i1 - i0) / (pw * 1.5)));
+												const segs = (a, skip0) => {
+													const out = []; let cur = null;
+													const add = (i) => { const v = a[i]; if (v == null || (skip0 && v <= 0)) { cur = null; return; } if (!cur) out.push((cur = [])); cur.push([x(hist.t[i]), y(v)]); };
+													for (let i = i0; i <= i1; i += stride) add(i);
+													if ((i1 - i0) % stride) add(i1);
+													return out;
+													};
+													const dstr = (sg) => sg.map((s) => "M" + s.map((p) => p[0].toFixed(1) + " " + p[1].toFixed(1)).join("L")).join("");
+													for (const s of series) {
+														const col = `var(${s.c})`, a = hist[s.k];
+														if (s.kind === "state") {
+															let run = null;
+															const flush = (iEnd) => { if (run == null) return; const xa = x(hist.t[run]), xb = x(hist.t[iEnd]); svg.append(el("rect", { x: xa, y: m.t, width: Math.max(1.5, xb - xa), height: ph, fill: col, opacity: 0.55, rx: 2 })); run = null; };
+															for (let i = i0; i <= i1; i++) { if (a[i] === s.on) { if (run == null) run = i; } else flush(i); }
+															flush(i1);
+															continue;
+														}
+														if (s.target && hist[s.target]) svg.append(el("path", { class: "tg", d: dstr(segs(hist[s.target], true)), stroke: col }));
+														const sg = segs(a);
+														if (s.area) {
+															const base = m.t + ph;
+															const ad = sg.map((q) => "M" + q[0][0].toFixed(1) + " " + base + "L" + q.map((p) => p[0].toFixed(1) + " " + p[1].toFixed(1)).join("L") + "L" + q[q.length - 1][0].toFixed(1) + " " + base + "Z").join("");
+															svg.append(el("path", { d: ad, fill: col, "fill-opacity": s.area }));
+														}
+														svg.append(el("path", { class: "ln", d: dstr(sg), stroke: col }));
+													}
+													c.xh = el("line", { class: "xh", y1: m.t, y2: m.t + ph }); svg.append(c.xh);
+													c.dots = line.map((s) => { const d = el("circle", { class: "hd", r: 3.5, fill: `var(${s.c})` }); svg.append(d); return [s, d]; });
+													host.replaceChildren(svg);
+													c.placeHover();
+													};
+													c.placeHover = () => {
+														if (!c.xh) return;
+														const on = hoverT != null && hoverT >= c.dom[0] && hoverT <= c.dom[1];
+														host.classList.toggle("hov", on);
+														if (!on) return;
+														const i = bsearch(hoverT), px = c.x(hist.t[i]);
+														c.xh.setAttribute("x1", px); c.xh.setAttribute("x2", px);
+														for (const [s, d] of c.dots) { const v = hist[s.k][i]; d.setAttribute("cx", px); d.setAttribute("cy", v == null ? -99 : c.y(v)); }
+														};
+														return c;
+													}
+													
+													function tooltip(container) {
+														const tip = document.createElement("div"); tip.className = "ctip"; container.append(tip);
+														return {
+															show(groups, src) {
+																if (hoverT == null || !src || !src.e) { tip.classList.remove("on"); return; }
+																const i = idx();
+																tip.replaceChildren();
+																const tt = document.createElement("div"); tt.className = "tt"; tt.textContent = clockS(hist.t[i]); tip.append(tt);
+																let first = true;
+																for (const g of groups) {
+																	const ks = g.filter(avail);
+																	if (!ks.length) continue;
+																	if (!first) tip.append(document.createElement("hr"));
+																	first = false;
+																	for (const k of ks) {
+																		const s = meta(k), r = document.createElement("div"); r.className = "r"; r.style.setProperty("--c", `var(${s.c})`);
+																		const n = document.createElement("span"); n.textContent = s.label;
+																		const b = document.createElement("b"); const v = hist[k][i];
+																		b.textContent = s.state ? (s.state[v] ?? "—") : s.fmt(v) + (["rpm", "V", "mm"].includes(s.unit) ? " " + s.unit : "");
+																		if (s.target && hist[s.target] && hist[s.target][i] > 0) b.textContent += " / " + Math.round(hist[s.target][i]) + "°";
+																		r.append(document.createElement("i"), n, b); tip.append(r);
+																	}
+																}
+																tip.classList.add("on");
+																const cr = container.getBoundingClientRect();
+																const px = src.e.clientX - cr.left, py = src.e.clientY - cr.top;
+																const tw = tip.offsetWidth, th = tip.offsetHeight;
+																let left = px + 16; if (left + tw > container.clientWidth - 6) left = px - tw - 16;
+																tip.style.left = Math.max(6, left) + "px";
+																tip.style.top = clamp(py - th / 2, 6, container.clientHeight - th - 6) + "px";
+																},
+																};
+															}
+															
+															// ================================================================ boxes
+															function opt(host, items, cur, on) {
+																host.replaceChildren();
+																for (const [v, t] of items) {
+																	const b = document.createElement("button"); b.textContent = t; b.setAttribute("aria-pressed", String(v === cur));
+																	b.onclick = () => { for (const x of host.children) x.setAttribute("aria-pressed", String(x === b)); on(v); };
+																	host.append(b);
+																}
+															}
+															opt($("rng"), [["900", "15m"], ["3600", "1h"], ["job", "job"], ["43200", "12h"]], range, (v) => { range = v; pref.set("range", v); loadHistory().then(redraw); });
+															
+															const dom = () => win();
+															const tip = tooltip($("grid"));
+															const fans = () => ["print", "hbr", "chm", "flt"].map(fanKey);
+															const STATE_ON = { door: 1, fil: 0 };
+															const BOXES = [
+															{ id: "temps", title: "temps", merged: () => ["noz", "bed", "chm"], lanes: () => ["noz", "bed", "chm"], y: "auto0", h: 160 },
+															{ id: "fans", title: "fans", merged: fans, lanes: fans, y: () => (unit === "pct" && avail("f_print") ? [0, 100] : "zero"), h: 160, unit: true },
+															{ id: "elec", title: "electronics", merged: () => ["hbr", "brd", "mcu"], lanes: () => ["hbr", "brd", "mcu"], y: "auto", h: 120 },
+															{ id: "misc", title: "z · 24v · io", merged: () => ["z"], io: true, rowsKeys: () => ["z", "v24"], lanes: () => ["z", "v24", "door", "fil"], y: "zero", h: 120 },
+															];
+															
+															function meter(frac, n) {
+																const f = Math.round(clamp(isFinite(frac) ? frac : 0, 0, 1) * n);
+																const w = document.createElement("span"); w.className = "m";
+																w.append("■".repeat(f)); const s = document.createElement("s"); s.textContent = "■".repeat(n - f); w.append(s);
+																return w;
+															}
+															function frac(k, v, s0) {
+																const s = meta(k);
+																if (v == null) return 0;
+																if (s.unit === "%") return v / 100;
+																if (s.target) return v / 300;
+																if (s.unit === "V") return (v - 23) / 2;
+																if (s.unit === "°") return (v - 15) / 55;
+																return v / Math.max(1, s0.max || 1);
+															}
+															
+															for (const B of BOXES) {
+																const fs = document.createElement("fieldset");
+																fs.innerHTML = '<legend><span class="t"></span><span class="opt u"></span><span class="opt sp"></span></legend><div class="body"></div>';
+																fs.querySelector(".t").textContent = B.title;
+																$("grid").append(fs);
+																B.el = fs; B.body = fs.querySelector(".body"); B.charts = []; B.split = pref.get("split." + B.id, "0") === "1";
+																if (B.unit) opt(fs.querySelector(".u"), [["pct", "%"], ["rpm", "rpm"]], unit, (v) => { unit = v; pref.set("unit", v); redraw(); });
+																opt(fs.querySelector(".sp"), [["0", "merged"], ["1", "split"]], B.split ? "1" : "0", (v) => { B.split = v === "1"; pref.set("split." + B.id, v); build(B); redraw(); });
+															}
+															const keysOf = (B) => (B.split ? B.lanes() : [...B.merged(), ...(B.rowsKeys ? B.rowsKeys() : [])]).filter(avail);
+															const sig = (B) => [B.split, unit, keysOf(B).join()].join("|");
+															
+															function build(B) {
+																B.charts.forEach((c) => charts.delete(c)); B.charts = []; B.body.replaceChildren(); B.sig = sig(B);
+																const keys = keysOf(B);
+																B.el.hidden = !keys.length && B.id !== "temps";
+																if (!keys.length) { const e = document.createElement("div"); e.className = "empty"; e.textContent = "no data yet"; B.body.append(e); B.rows = null; return; }
+																if (!B.split) {
+																	const host = document.createElement("div"), rows = document.createElement("div"); rows.className = "rows";
+																	B.body.append(host, rows); B.rows = rows;
+																	B.charts.push(chart(host, {
+																		h: B.h, y: B.y, xAxis: true, evLabels: B.id === "temps", domain: dom,
+																		series: () => [...B.merged().map((k) => ({ k, area: 0.1 })), ...(B.io ? [{ k: "door", kind: "state", on: 1, c: "--red" }, { k: "fil", kind: "state", on: 0, c: "--red" }] : [])],
+																		}));
+																		return;
+																	}
+																	B.rows = null;
+																	keys.forEach((k, n) => {
+																		const s = meta(k), lastLane = n === keys.length - 1, dig = k in STATE_ON;
+																		const row = document.createElement("div"); row.className = "lane"; row.style.setProperty("--c", `var(${s.c})`);
+																		row.innerHTML = '<div class="gut"><div class="l"></div><div class="v"></div></div><div></div>';
+																		row.querySelector(".l").textContent = s.label.toLowerCase();
+																		B.body.append(row);
+																		const ch = chart(row.lastChild, {
+																			h: (dig ? 18 : 52) + (lastLane ? 18 : 0), ml: 34, mt: 5, mb: lastLane ? 20 : 4, yTicks: 2, xAxis: lastLane, grid: !dig, domain: dom,
+																			y: s.unit === "%" ? [0, 100] : s.unit === "rpm" || s.unit === "mm" ? "zero" : "auto",
+																			series: () => [dig ? { k, kind: "state", on: STATE_ON[k], c: "--red" } : { k, area: 0.1 }],
+																			});
+																			ch.gut = row.querySelector(".v"); ch.key = k;
+																			B.charts.push(ch);
+																			});
+																		}
+																		
+																		function values() {
+																			const i = idx(), [t0, t1] = dom();
+																			for (const B of BOXES) {
+																				if (B.rows) {
+																					B.rows.replaceChildren();
+																					for (const k of (B.rowsKeys || B.merged)().filter(avail)) {
+																						const s = meta(k), s0 = stats(k, t0, t1), v = hist[k][i];
+																						const kk = document.createElement("span"); kk.className = "k"; kk.style.setProperty("--c", `var(${s.c})`); kk.textContent = s.short;
+																						const mt = meter(frac(k, v, s0), 24); mt.style.setProperty("--c", `var(${s.c})`);
+																						const vv = document.createElement("span"); vv.className = "v"; vv.textContent = s.fmt(v);
+																						if (s.target && hist[s.target] && hist[s.target][i] > 0) vv.textContent += "/" + Math.round(hist[s.target][i]);
+																						const lo = document.createElement("span"); lo.className = "d lo"; lo.textContent = "▼" + s.fmt(s0.min);
+																						const hi = document.createElement("span"); hi.className = "d"; hi.textContent = "▲" + s.fmt(s0.max);
+																						B.rows.append(kk, mt, vv, lo, hi);
+																					}
+																				}
+																				for (const ch of B.charts) {
+																					if (!ch.gut) continue;
+																					const s = meta(ch.key), v = hist[ch.key][i];
+																					if (s.state) { ch.gut.textContent = s.state[v] ?? "—"; ch.gut.classList.toggle("bad", v === STATE_ON[ch.key]); continue; }
+																					ch.gut.textContent = s.fmt(v).replace(/[°%]$/, "");
+																					const u = document.createElement("small"); const tv = s.target && hist[s.target] ? hist[s.target][i] : 0;
+																					u.textContent = " " + s.unit + (tv > 0 ? " →" + Math.round(tv) : ""); ch.gut.append(u);
+																				}
+																			}
+																			// details
+																			const j = jobOf(), p = (st && st.printer) || {}, info = (st && st.info) || {}, nm = parseName(j && j.name);
+																			const total = j && j.time_printing != null && j.time_remaining != null ? j.time_printing + j.time_remaining : null;
+																			const items = [
+																			["elapsed", j ? dur(j.time_printing) : "—"], ["estimate", dur(total)], ["slicer est", nm.est || (j && j.slicer_est ? dur(j.slicer_est) : "—")],
+																			["z", F.mm(p.z) + " mm"], ["speed", p.speed != null ? p.speed + "%" : "—"], ["flow", p.flow != null ? p.flow + "%" : "—"],
+																			["24v rail", avail("v24") ? F.volt(hist.v24[i]) + " V" : null],
+																			["door", avail("door") ? S.door.state[hist.door[i]] : null, hist.door && hist.door[i] ? "bad" : "ok"],
+																			["filament", avail("fil") ? S.fil.state[hist.fil[i]] : null, hist.fil && hist.fil[i] === 0 ? "bad" : "ok"],
+																			["fw", info.fw || "—"], ["prusalink", info.link || "—"], ["metrics", st && st.udp ? "udp live" : "no udp", st && st.udp ? "ok" : ""],
+																			["cam", camMode, camMode === "error" || camMode === "reconnecting" ? "bad" : ""],
+																			];
+																			const kv = $("kv"); kv.replaceChildren();
+																			for (const [k, v, cls] of items) {
+																				if (v == null) continue;
+																				const d = document.createElement("div"), a = document.createElement("span"), b = document.createElement("b");
+																				a.textContent = k; b.textContent = v; if (cls) b.className = cls; d.append(a, b); kv.append(d);
+																			}
+																			$("cur").textContent = hoverT == null ? "· live" : "· @ " + clockS(hist.t[i]);
+																		}
+																		
+																		// ================================================================ header
+																		const STATE = {
+																			PRINTING:  { label: "printing",  c: "--green",    icon: '<path d="M3 2l7 4-7 4z"/>' },
+																			PAUSED:    { label: "paused",    c: "--yellow",   icon: '<path d="M3 2h2v8H3zM7 2h2v8H7z"/>' },
+																			ATTENTION: { label: "attention", c: "--red",      icon: '<path d="M6 1l5.5 10h-11zM5.3 4.5h1.4v3H5.3zM5.3 8.3h1.4v1.4H5.3z" fill-rule="evenodd"/>' },
+																			ERROR:     { label: "error",     c: "--red",      icon: '<path d="M2 2l8 8M10 2l-8 8" stroke="currentColor" stroke-width="2"/>' },
+																			FINISHED:  { label: "finished",  c: "--green",    icon: '<path d="M2 6.5l2.5 2.5L10 3.5" fill="none" stroke="currentColor" stroke-width="1.8"/>' },
+																			STOPPED:   { label: "stopped",   c: "--peach",    icon: '<rect x="2.5" y="2.5" width="7" height="7"/>' },
+																			BUSY:      { label: "busy",      c: "--blue",     icon: '<circle cx="6" cy="6" r="3"/>' },
+																			IDLE:      { label: "idle",      c: "--overlay1", icon: '<circle cx="6" cy="6" r="3"/>' },
+																			READY:     { label: "ready",     c: "--overlay1", icon: '<circle cx="6" cy="6" r="3"/>' },
+																			OFFLINE:   { label: "offline",   c: "--overlay0", icon: '<circle cx="6" cy="6" r="3" fill="none" stroke="currentColor" stroke-width="1.5"/>' },
+																			};
+																			let thumbFor = null;
+																			function header() {
+																				if (!st) return;
+																				const stt = STATE[st.state] || { label: String(st.state).toLowerCase(), c: "--overlay1", icon: STATE.IDLE.icon };
+																				const j = jobOf(), nm = parseName(j && j.name), live = active(), p = st.printer || {};
+																				$("hd").style.setProperty("--stc", `var(${stt.c})`);
+																				const chips = $("chips"); chips.replaceChildren();
+																				const s = document.createElement("span"); s.className = "state"; s.innerHTML = `<svg viewBox="0 0 12 12" fill="currentColor">${stt.icon}</svg>`; s.append(stt.label); chips.append(s);
+																				if (j) {
+																					const mat = j.material || nm.material;
+																					for (const t of [mat, nm.nozzle && nm.nozzle + "n", nm.layer && nm.layer + "mm", live && p.speed != null && "spd " + p.speed + "%", live && p.flow != null && "flow " + p.flow + "%", "#" + j.id].filter(Boolean)) {
+																						const e = document.createElement("span"); e.textContent = t; chips.append(e);
+																					}
+																				}
+																				$("title").textContent = j ? (live ? nm.title : "last: " + nm.title) : "no print";
+																				$("title").title = (j && j.name) || "";
+																				const pct = live ? j.progress : st.state === "FINISHED" && j ? 100 : null;
+																				$("pct").textContent = pct == null ? "" : Math.floor(pct) + "%";
+																				$("bar").style.width = (pct || 0) + "%";
+																				
+																				const img = $("thumb");
+																				if (j && j.thumb && thumbFor !== j.id) { thumbFor = j.id; img.hidden = false; img.onerror = () => { img.hidden = true; }; img.src = "printer/thumb?id=" + j.id; }
+																				if (!j) img.hidden = true;
+																				
+																				const stats = $("stats"); stats.replaceChildren();
+																				const add = (k, v) => { const e = document.createElement("span"); e.append(k + " "); const b = document.createElement("b"); b.textContent = v; e.append(b); stats.append(e); };
+																				if (live) {
+																					add("elapsed", dur(j.time_printing)); add("left", dur(j.time_remaining));
+																					if (j.time_remaining != null) add("eta", clock(now() + j.time_remaining));
+																					if (j.filament_change_in != null) add("filament change in", dur(j.filament_change_in));
+																					const sp = document.createElement("span"); sp.className = "sp"; stats.append(sp);
+																					add("est", dur((j.time_printing || 0) + (j.time_remaining || 0)) + (nm.est ? " · slicer " + nm.est : ""));
+																					} else if (j && j.time_printing != null) {
+																						add("took", dur(j.time_printing));
+																						if (j.start) add("started", clock(j.start));
+																					}
+																				}
+																				
+																				// ================================================================ loop
+																				function redraw() {
+																					for (const B of BOXES) if (B.sig !== sig(B)) build(B);
+																					for (const c of charts) c.draw();
+																					header(); values();
+																				}
+																				hoverFns.add((src) => { values(); tip.show([["noz", "bed", "chm"], fans(), ["hbr", "brd", "mcu"], ["z", "v24"]], src); });
+																				window.addEventListener("cam", (e) => { camMode = e.detail; values(); });
+																				document.addEventListener("visibilitychange", () => { if (!document.hidden) loadHistory().then(redraw).catch(() => {}); });
+																				
+																				(async () => {
+																					try { st = await getJSON("printer/status"); await loadHistory(); } catch (e) { $("title").textContent = "collector unreachable"; }
+																					redraw();
+																					setInterval(poll, 2000);
+																					setInterval(() => loadHistory().then(redraw).catch(() => {}), 300000);
+																					})();
+																					})();
+		</script>
+	</body>
+</html>
