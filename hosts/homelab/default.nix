@@ -128,7 +128,17 @@
         studioRef = "v0.1.806-beta";
       };
       openai-oauth.enable = true;
-      tinyfish-search.enable = true;
+      tinyfish-search = {
+        enable = true;
+        listenAddresses = [
+          "127.0.0.1"
+          "100.68.176.20"
+        ];
+        tokenSecrets = [
+          "owui-search-token"
+          "twitch-bot-search-token"
+        ];
+      };
       mcp-nixos.enable = false;
     };
   };

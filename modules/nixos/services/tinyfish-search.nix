@@ -25,6 +25,8 @@ let
         import hmac
         import json
         import os
+        import socket
+        import threading
         import urllib.parse
         import urllib.request
         from http.server import BaseHTTPRequestHandler, ThreadingHTTPServer
@@ -32,16 +34,17 @@ let
         SEARCH_UPSTREAM = "https://api.search.tinyfish.ai"
         FETCH_UPSTREAM = "https://api.fetch.tinyfish.ai"
         PORT = int(os.environ["SHIM_PORT"])
+        ADDRS = os.environ["SHIM_ADDRS"].split(",")
         MAX_CHARS = 20000
 
 
-        def read_secret(var):
-            with open(os.environ[var]) as f:
+        def read_file(path):
+            with open(path) as f:
                 return f.read().strip()
 
 
-        API_KEY = read_secret("TINYFISH_API_KEY_FILE")
-        TOKEN = read_secret("SHIM_TOKEN_FILE")
+        API_KEY = read_file(os.environ["TINYFISH_API_KEY_FILE"])
+        TOKENS = [read_file(p) for p in os.environ["SHIM_TOKEN_FILES"].split(":")]
 
 
         def tf_get(url):
@@ -126,9 +129,8 @@ let
                 self.wfile.write(data)
 
             def authed(self):
-                expected = "Bearer " + TOKEN
                 got = self.headers.get("Authorization", "")
-                return hmac.compare_digest(got, expected)
+                return any(hmac.compare_digest(got, "Bearer " + t) for t in TOKENS)
 
             def body(self):
                 n = int(self.headers.get("Content-Length", 0))
@@ -175,7 +177,20 @@ let
                 print(fmt % args, flush=True)
 
 
-        ThreadingHTTPServer(("127.0.0.1", PORT), Handler).serve_forever()
+        class Server(ThreadingHTTPServer):
+            daemon_threads = True
+
+            def server_bind(self):
+                # FREEBIND lets the tailnet IP bind before tailscale0 holds it.
+                freebind = getattr(socket, "IP_FREEBIND", 15)
+                self.socket.setsockopt(socket.IPPROTO_IP, freebind, 1)
+                super().server_bind()
+
+
+        servers = [Server((addr, PORT), Handler) for addr in ADDRS]
+        for extra in servers[1:]:
+            threading.Thread(target=extra.serve_forever, daemon=True).start()
+        servers[0].serve_forever()
       '';
 in
 {
@@ -184,13 +199,26 @@ in
     port = lib.mkOption {
       type = lib.types.port;
       default = 8111;
-      description = "Loopback port for the shim";
+      description = "Listen port on every address in listenAddresses";
+    };
+
+    listenAddresses = lib.mkOption {
+      type = lib.types.listOf lib.types.str;
+      default = [ "127.0.0.1" ];
+      description = "Addresses to bind. A tailnet IP binds before tailscaled is up (IP_FREEBIND).";
+    };
+
+    tokenSecrets = lib.mkOption {
+      type = lib.types.listOf lib.types.str;
+      default = [ "owui-search-token" ];
+      description = "sops secret names; each holds one accepted bearer token";
     };
   };
 
   config = lib.mkIf cfg.enable {
-    sops.secrets.tinyfish-api-key.restartUnits = [ "tinyfish-search.service" ];
-    sops.secrets.owui-search-token.restartUnits = [ "tinyfish-search.service" ];
+    sops.secrets = lib.genAttrs ([ "tinyfish-api-key" ] ++ cfg.tokenSecrets) (_: {
+      restartUnits = [ "tinyfish-search.service" ];
+    });
 
     systemd.services.tinyfish-search = {
       description = "TinyFish search shim for Open WebUI";
@@ -200,10 +228,11 @@ in
 
       environment = {
         SHIM_PORT = toString cfg.port;
+        SHIM_ADDRS = lib.concatStringsSep "," cfg.listenAddresses;
         # %d is CREDENTIALS_DIRECTORY: systemd copies the sops secrets there
         # as root at start, readable by the dynamic uid.
         TINYFISH_API_KEY_FILE = "%d/tinyfish";
-        SHIM_TOKEN_FILE = "%d/token";
+        SHIM_TOKEN_FILES = lib.concatMapStringsSep ":" (s: "%d/${s}") cfg.tokenSecrets;
       };
 
       serviceConfig = {
@@ -214,8 +243,8 @@ in
         DynamicUser = true;
         LoadCredential = [
           "tinyfish:${config.sops.secrets.tinyfish-api-key.path}"
-          "token:${config.sops.secrets.owui-search-token.path}"
-        ];
+        ]
+        ++ map (s: "${s}:${config.sops.secrets.${s}.path}") cfg.tokenSecrets;
 
         NoNewPrivileges = true;
         PrivateTmp = true;

@@ -53,7 +53,7 @@ mySystem
     ├── ollama         { enable acceleration rocmOverrideGfx environment }     # cuda | rocm | cpu
     ├── open-webui     { enable port environment }
     ├── openai-oauth   { enable port }                                        # codex OAuth → openai-compatible, loopback
-    ├── tinyfish-search{ enable port }                                        # search/fetch shim for Open WebUI
+    ├── tinyfish-search{ enable port listenAddresses tokenSecrets }           # search/fetch shim for Open WebUI
     ├── unsloth        { enable acceleration image port version studioRef }   # containerized, owned-image build
     ├── cgit           { enable repoDir sshUser package highlightStyle }
     ├── atuin          { enable port openRegistration }
