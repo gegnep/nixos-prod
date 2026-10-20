@@ -38,7 +38,11 @@
       nvidia.enable = false;
       amd = {
         enable = true;
-        lactGpus = [ "1002:7551-148C:2443-0000:13:00.0" ];
+        lactGpus = [
+          "1002:7551-148C:2443-0000:13:00.0" # PCIE1
+          "1002:7551-1849:5413-0000:16:00.0" # PCIE3
+
+        ];
       };
       intel.enable = true;
     };
