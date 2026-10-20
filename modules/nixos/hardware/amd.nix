@@ -11,6 +11,8 @@ let
   # LACT wants integer curve keys, so the YAML stays hand-written text
   # (pkgs.formats.yaml would quote attr-name keys). '' strings strip common
   # indentation, so each block is re-indented under `gpus:` explicitly.
+  # No zero_rpm: the R9700 exposes an empty fan_zero_rpm_enable, so lactd logged a
+  # parse error per card (harmless, LACT 0.10.1 skips it and still applies the curve).
   indent = s: lib.concatMapStrings (l: "  ${l}\n") (lib.init (lib.splitString "\n" s));
   gpuBlock =
     id:
@@ -30,7 +32,6 @@ let
             82: 0.55
             92: 0.90
         pmfw_options:
-          zero_rpm: false
           minimum_pwm: 20
           target_temperature: 80
     '';
