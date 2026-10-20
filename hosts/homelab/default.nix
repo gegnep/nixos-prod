@@ -10,7 +10,10 @@
 
   networking.hostName = "homelab";
 
-  boot.binfmt.emulatedSystems = [ "aarch64-linux" ];
+  boot = {
+    binfmt.emulatedSystems = [ "aarch64-linux" ];
+    loader.systemd-boot.memtest86.enable = true;
+  };
 
   system.stateVersion = "26.05";
 
