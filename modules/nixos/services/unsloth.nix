@@ -65,6 +65,15 @@ in
       description = "Host port for Unsloth Studio";
     };
 
+    autoStart = lib.mkOption {
+      type = lib.types.bool;
+      default = true;
+      description = ''
+        Start Studio at boot. Off: start it on demand (podman-unsloth.service),
+        which also defers the owned-image build to that moment instead of the deploy.
+      '';
+    };
+
     version = lib.mkOption {
       type = lib.types.str;
       default = pins.version;
@@ -139,7 +148,7 @@ in
 
     virtualisation.oci-containers.containers.unsloth = {
       inherit image;
-      autoStart = true;
+      autoStart = cfg.autoStart;
       pull = "never";
 
       ports = [ "${toString cfg.port}:8000" ];

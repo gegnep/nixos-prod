@@ -134,6 +134,7 @@
         enable = true;
         acceleration = "rocm";
         port = 3000;
+        autoStart = false; # on demand; `ai train on|off` arrives with inference.nix
       };
       openai-oauth.enable = true;
       tinyfish-search = {
