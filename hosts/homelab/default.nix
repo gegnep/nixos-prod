@@ -47,6 +47,16 @@
       intel.enable = true;
     };
 
+    # Open WebUI runs on sidecar; Caddy and the *.homelab wildcard stay here.
+    proxy.vhosts.open-webui = {
+      sub = "ai";
+      upstream = "sidecar:3010";
+      dashboard = {
+        name = "Open WebUI";
+        description = "Chat frontend (sidecar)";
+      };
+    };
+
     proxy.externalTiles = {
       rustypaste = {
         name = "rustypaste";
@@ -84,6 +94,7 @@
           "blackbox"
           "nixpad"
           "ovh"
+          "sidecar"
         ];
       };
       unifi-backup.enable = true;
@@ -126,17 +137,12 @@
           OLLAMA_NUM_PARALLEL = "2";
         };
       };
-      open-webui = {
-        enable = true;
-        port = 3010;
-      };
       unsloth = {
         enable = true;
         acceleration = "rocm";
         port = 3000;
         autoStart = false; # on demand; `ai train on|off` arrives with inference.nix
       };
-      openai-oauth.enable = true;
       tinyfish-search = {
         enable = true;
         listenAddresses = [

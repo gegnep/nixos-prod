@@ -31,14 +31,23 @@
         nvidia = true;
       };
 
-      ollama = {
+      inference = {
         enable = true;
         acceleration = "cuda";
-        environment = {
-          OLLAMA_CONTEXT_LENGTH = "32768";
-          OLLAMA_NUM_PARALLEL = "1";
-          OLLAMA_KEEP_ALIVE = "1h";
-        };
+      };
+
+      # UI layer lives here so homelab's RAM goes to inference. homelab's Caddy
+      # serves it as ai.homelab (vhost in hosts/homelab).
+      open-webui = {
+        enable = true;
+        port = 3010;
+      };
+      openai-oauth.enable = true;
+
+      # Open WebUI's database holds config that exists nowhere in the flake.
+      resticClient = {
+        enable = true;
+        paths = [ "/var/lib/private/open-webui" ];
       };
     };
   };
