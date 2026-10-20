@@ -69,12 +69,9 @@ in
       };
     };
 
-    # Registers with Open WebUI when both run here. Both keys are
-    # PersistentConfig upstream: env only seeds a fresh database.
-    services.open-webui.environment = lib.mkIf config.mySystem.services.open-webui.enable {
-      ENABLE_OPENAI_API = "True";
-      OPENAI_API_BASE_URLS = "http://127.0.0.1:${toString cfg.port}/v1";
-      OPENAI_API_KEYS = "unused";
-    };
+    # Loopback only, so Open WebUI must run on this host to use it.
+    mySystem.services.open-webui.openaiConnections = [
+      { url = "http://127.0.0.1:${toString cfg.port}/v1"; }
+    ];
   };
 }

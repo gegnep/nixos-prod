@@ -10,11 +10,34 @@ let
 in
 {
   options.mySystem.services.open-webui = {
-    enable = lib.mkEnableOption "Open WebUI frontend for Ollama";
+    enable = lib.mkEnableOption "Open WebUI chat frontend";
     port = lib.mkOption {
       type = lib.types.port;
       default = 8080;
       description = "Open WebUI HTTP Port";
+    };
+    openaiConnections = lib.mkOption {
+      type = lib.types.listOf (
+        lib.types.submodule {
+          options = {
+            url = lib.mkOption {
+              type = lib.types.str;
+              description = "OpenAI-compatible base URL, ending in /v1.";
+            };
+            key = lib.mkOption {
+              type = lib.types.str;
+              default = "unused";
+              description = "API key sent to that URL.";
+            };
+          };
+        }
+      );
+      default = [ ];
+      description = ''
+        OpenAI-compatible connections seeded into a fresh database. Modules and
+        hosts append to it. PersistentConfig: an existing database ignores env,
+        so on a live instance the Admin Panel is the source of truth.
+      '';
     };
   };
 
@@ -33,7 +56,10 @@ in
       port = cfg.port;
 
       environment = {
-        OLLAMA_BASE_URL = "http://127.0.0.1:11434";
+        ENABLE_OLLAMA_API = "False";
+        ENABLE_OPENAI_API = "True";
+        OPENAI_API_BASE_URLS = lib.concatMapStringsSep ";" (c: c.url) cfg.openaiConnections;
+        OPENAI_API_KEYS = lib.concatMapStringsSep ";" (c: c.key) cfg.openaiConnections;
         WEBUI_URL = "http${lib.optionalString config.mySystem.proxy.tls "s"}://ai.${config.mySystem.proxy.domain}";
 
         ANONYMIZED_TELEMETRY = "False";
@@ -50,7 +76,7 @@ in
       upstream = "127.0.0.1:${toString cfg.port}";
       dashboard = {
         name = "Open WebUI";
-        description = "Ollama chat frontend";
+        description = "Chat frontend";
       };
     };
   };
