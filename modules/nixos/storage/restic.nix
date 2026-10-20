@@ -36,6 +36,7 @@ in
         "/var/lib/models/ollama" # 136G of blobs, re-pullable
         "/var/lib/models/hf" # 118G of HF base weights, re-downloadable
         "/var/lib/models/.staging" # transient import staging
+        "/var/lib/models/cache" # llama.cpp/Radiance/Maya weights + Maya build tree, re-creatable
         "/var/lib/unsloth/studio" # 23G, rebuilt by the image unit
         "/var/lib/unsloth/wheels" # 5.8G of torch wheels, re-downloadable
         "/var/lib/unsloth/cache"
