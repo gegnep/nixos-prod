@@ -33,7 +33,10 @@
 
     hardware = {
       nvidia.enable = false;
-      amd.enable = true;
+      amd = {
+        enable = true;
+        lactGpus = [ "1002:7551-148C:2443-0000:13:00.0" ];
+      };
       intel.enable = true;
     };
 
