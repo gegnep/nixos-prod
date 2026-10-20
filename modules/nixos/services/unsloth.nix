@@ -8,6 +8,7 @@
 
 let
   cfg = config.mySystem.services.unsloth;
+  pins = (lib.importJSON ../../../pins.json).unsloth;
 
   containerDir = ../../../containers/unsloth;
   # store-path hash of the build context: edits to Containerfile*/entrypoint.sh retag -> rebuild
@@ -66,12 +67,16 @@ in
 
     version = lib.mkOption {
       type = lib.types.str;
+      default = pins.version;
+      defaultText = lib.literalMD "`unsloth.version` in `pins.json`";
       description = "unsloth PyPI version pinned into the owned image";
       example = "2026.8.19";
     };
 
     studioRef = lib.mkOption {
       type = lib.types.str;
+      default = pins.studioRef;
+      defaultText = lib.literalMD "`unsloth.studioRef` in `pins.json`";
       description = "unsloth git tag whose install.sh builds the image (studio release tag)";
       example = "v0.1.801-beta";
     };

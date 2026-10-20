@@ -97,6 +97,14 @@
       # `colmena` output is only read under the deprecated --legacy-flake-eval.
       colmenaHive = inputs.colmena.lib.makeHive self.outputs.colmena;
 
+      # Repo tooling: `nix run .#update-pins [name ...]` bumps pins.json to latest upstream.
+      apps.x86_64-linux.update-pins = {
+        type = "app";
+        program = nixpkgs.lib.getExe (
+          nixpkgs.legacyPackages.x86_64-linux.callPackage ./pkgs/update-pins { }
+        );
+      };
+
       colmena = {
         meta = {
           nixpkgs = import nixpkgs {

@@ -134,8 +134,6 @@
         enable = true;
         acceleration = "rocm";
         port = 3000;
-        version = "2026.9.2";
-        studioRef = "v0.1.806-beta";
       };
       openai-oauth.enable = true;
       tinyfish-search = {
