@@ -27,7 +27,19 @@ let
   llamaCpp =
     {
       rocm = pkgs.llama-cpp-rocm;
-      cuda = pkgs.llama-cpp-cuda;
+      cuda =
+        if cfg.cudaArchitectures == null then
+          pkgs.llama-cpp-cuda
+        else
+          pkgs.llama-cpp-cuda.overrideAttrs (old: {
+            cmakeFlags = map (
+              f:
+              if lib.hasPrefix "-DCMAKE_CUDA_ARCHITECTURES" f then
+                "-DCMAKE_CUDA_ARCHITECTURES:STRING=${lib.concatStringsSep ";" cfg.cudaArchitectures}"
+              else
+                f
+            ) old.cmakeFlags;
+          });
       cpu = pkgs.llama-cpp;
     }
     .${cfg.acceleration};
@@ -48,12 +60,10 @@ let
 
   # Validated at build time. Model files are validated by `ai` against this
   # same file before they are installed.
-  baseConfig =
-    pkgs.runCommandLocal "llama-swap-base.yaml" { nativeBuildInputs = [ llamaSwap ]; }
-      ''
-        cp ${yaml.generate "llama-swap-base-unchecked.yaml" settings} $out
-        llama-swap -validate -config $out
-      '';
+  baseConfig = pkgs.runCommandLocal "llama-swap-base.yaml" { nativeBuildInputs = [ llamaSwap ]; } ''
+    cp ${yaml.generate "llama-swap-base-unchecked.yaml" settings} $out
+    llama-swap -validate -config $out
+  '';
 
   ai = pkgs.writeShellApplication {
     name = "ai";
@@ -95,6 +105,16 @@ in
         "cpu"
       ];
       description = "GPU stack llama.cpp is built against.";
+    };
+
+    cudaArchitectures = lib.mkOption {
+      type = lib.types.nullOr (lib.types.listOf lib.types.str);
+      default = null;
+      example = [ "86" ]; # 3060 12gb
+      description = ''
+        Build llama.cpp for these CUDA architectures only. Much shorter local
+        builds, but cache.nixos-cuda.org never has the result. null = nixpkgs default.
+      '';
     };
 
     port = lib.mkOption {

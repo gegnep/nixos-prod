@@ -34,6 +34,7 @@
       inference = {
         enable = true;
         acceleration = "cuda";
+        cudaArchitectures = [ "86" ]; # RTX 3060 12GB
       };
 
       # UI layer lives here so homelab's RAM goes to inference. homelab's Caddy
