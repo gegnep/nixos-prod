@@ -172,8 +172,18 @@ in
 
       environmentFiles = [ config.sops.templates."unsloth.env".path ];
 
-      extraOptions = [ "--shm-size=8g" ] ++ gpuFlags.${cfg.acceleration};
+      # --init: entrypoint.sh execs the Studio CLI as PID 1, which has no SIGTERM
+      # handler, so the kernel drops podman stop's SIGTERM. podman then waits 10s
+      # and SIGKILLs (status 137, unit failed). catatonit as PID 1 forwards it.
+      extraOptions = [
+        "--shm-size=8g"
+        "--init"
+      ]
+      ++ gpuFlags.${cfg.acceleration};
     };
+
+    # A stop now ends in SIGTERM (143); treat that as a clean stop, not a failure.
+    systemd.services.podman-unsloth.serviceConfig.SuccessExitStatus = [ 143 ];
 
     networking.firewall.interfaces."tailscale0".allowedTCPPorts = [ cfg.port ];
 
