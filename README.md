@@ -6,8 +6,8 @@ NixOS flake for my homelab and VPS fleet.
 
 | Host | Machine | Role |
 |------|---------|------|
-| **homelab** | Ryzen 5 3600, R9700 + Arc A310 | Headless server — DNS, dashboards, git, AI (ollama/rocm, Open WebUI, Unsloth Studio), Factorio, backups, nix build farm. |
-| **sidecar** | Ryzen 3 3100, RTX 3060 | Second inference node — ollama/cuda. |
+| **homelab** | Ryzen 5 3600, 64 GB, 2× R9700 + Arc A310 | Headless server: DNS, dashboards, git, model hosting (llama-swap over llama.cpp/ROCm, Radiance, Project Maya; Unsloth Studio on demand), Factorio, backups, nix build farm. |
+| **sidecar** | Ryzen 3 3100, RTX 3060 | UI node: Open WebUI, openai-oauth, small models (llama-swap over llama.cpp/CUDA). |
 | **ovh** | OVH VPS (x86_64, BIOS/GRUB) | Public edge — ACME TLS for `*.pengeg.com`, rustypaste, mcp-nixos, ntfy proxy. |
 | **oracle** | Oracle Cloud A1 (aarch64) | Mostly idle — Minecraft pending. Builds on-target. |
 
@@ -34,7 +34,7 @@ mySystem
 ├── homelabCache.enable                # substitute from Harmonia over tailnet (non-homelab hosts)
 ├── colmenaTarget.enable               # accept root deploys, key-only, tailnet
 ├── hardware
-│   ├── amd.enable                     # rocm, LACT fan curve
+│   ├── amd            { enable lactGpus }                                    # rocm, LACT fan curve per card
 │   ├── intel.enable
 │   └── nvidia.enable                  # open driver + container toolkit
 ├── backup.mountPoint                  # raid1 mirror (homelab)
@@ -50,11 +50,13 @@ mySystem
     ├── beszel
     │   ├── hub        { enable port }
     │   └── agent      { enable nvidia amd intel smart containers }
-    ├── ollama         { enable acceleration rocmOverrideGfx environment }     # cuda | rocm | cpu
-    ├── open-webui     { enable port environment }
+    ├── inference      { enable acceleration cudaArchitectures port listenAddress macros settings }   # llama-swap + llama.cpp, ai CLI
+    │   ├── radiance   { enable image }                                       # tensor parallel, image pinned by digest
+    │   └── maya       { enable gpus }                                        # GLM-5.3-Flash, owned ROCm image
+    ├── open-webui     { enable port environment openaiConnections }
     ├── openai-oauth   { enable port }                                        # codex OAuth → openai-compatible, loopback
     ├── tinyfish-search{ enable port listenAddresses tokenSecrets }           # search/fetch shim for Open WebUI
-    ├── unsloth        { enable acceleration image port version studioRef }   # containerized, owned-image build
+    ├── unsloth        { enable acceleration image port version studioRef autoStart }   # owned image; ai train on|off
     ├── cgit           { enable repoDir sshUser package highlightStyle }
     ├── atuin          { enable port openRegistration }
     ├── syncthing      { enable guiPort dataDir lanSync settings }
@@ -67,7 +69,7 @@ mySystem
     ├── flake-builder  { enable repoUrl localPath hosts extraSubstituters onCalendar issueRepo issueLabels }
     ├── restic         { enable paths exclude }                               # → B2
     ├── resticServer   { enable port tailnetAddress dataDir clients pruneOnCalendar }
-    ├── resticClient   { enable paths exclude onCalendar }                    # → resticServer
+    ├── resticClient   { enable paths exclude onCalendar }                    # → resticServer (ovh, sidecar)
     └── unifi-backup   { enable host remotePath localPath onCalendar }
 ```
 
@@ -81,14 +83,17 @@ mySystem
 ```text
 .
 ├── flake.nix / flake.lock             # nixosConfigurations + colmena hive from one mkModules
+├── pins.json                          # versions outside nixpkgs: unsloth, radiance, maya, llama.cpp
 ├── hosts/
 │   ├── homelab/                       # + factorio.nix (pinned mods); disko: NVMe + 2×2 TB raid1 → /backup
-│   ├── sidecar/                       # nvidia inference node; disko: NVMe, nodatacow @models/@containers
+│   ├── sidecar/                       # Open WebUI + small models; disko: NVMe, nodatacow @models/@containers
 │   ├── ovh/                           # public edge; BIOS/GRUB
 │   └── oracle/                        # aarch64
 ├── secrets/<host>.yaml                # sops (age), one per host
 ├── containers/unsloth/                # Containerfile{,.rocm} + entrypoint + rocm gemm patch
+├── containers/maya/                   # ROCm 7.2.1 toolchain image; entrypoint fetches Maya by commit
 ├── pkgs/openai-oauth/                 # ChatGPT-OAuth → OpenAI-compatible proxy (node)
+├── pkgs/update-pins/                  # nix run .#update-pins [name...]: pins.json → latest
 └── modules/
     ├── nixos/
     │   ├── default.nix                # auto-importer (the only default.nix in the tree)
@@ -102,10 +107,10 @@ mySystem
     │   ├── storage/
     │   │   ├── options.nix            # mySystem.backup.mountPoint
     │   │   ├── filesystems.nix        # btrfs top-level mount for btrbk
-    │   │   ├── btrbk.nix              # hourly snapshots → /backup
+    │   │   ├── btrbk.nix              # snapshots every 4 h → /backup
     │   │   ├── restic.nix             # /home + /var/lib → B2, ntfy-guarded
     │   │   ├── restic-server.nix      # append-only REST target for the other hosts
-    │   │   ├── restic-client.nix      # push to that server (ovh)
+    │   │   ├── restic-client.nix      # push to that server (ovh, sidecar)
     │   │   ├── unifi-backup.nix       # UCG .unf pull, ntfy-guarded
     │   │   ├── scrub.nix
     │   │   └── nfs.nix                # /backup exported
@@ -117,9 +122,10 @@ mySystem
     │   │   ├── factorio.nix           # headless server, version pinned by hand
     │   │   ├── fail2ban.nix
     │   │   ├── flake-builder.nix      # nightly desktop-flake lock bump + prebuild
+    │   │   ├── inference/             # inference.nix (llama-swap, polkit), ai.sh, engine-shim.sh,
+    │   │   │                          #   radiance.nix, maya.nix
     │   │   ├── mcp-nixos.nix          # http transport, funnel optional (ovh)
     │   │   ├── ntfy.nix
-    │   │   ├── ollama.nix             # + ollama-import / ollama-prune helpers
     │   │   ├── open-webui.nix
     │   │   ├── openai-oauth.nix
     │   │   ├── pihole.nix             # DNS + *.homelab wildcard (podman)
@@ -138,7 +144,20 @@ mySystem
 
 Contracts: every `*.nix` under `modules/nixos/` is imported on every host (`_`-prefixed skipped, `_lib/` imported explicitly). A service writes one `proxy.vhosts.<key>`; `caddy.nix` and `homepage.nix` are the only readers. `mkFailureUnit` gives a unit an `onFailure` hook that POSTs to `notify.url`.
 
-Names: `home dns ai sloth stats git ntfy atuin sync` under `.homelab` (Pi-hole wildcard); Harmonia `:5000`, restic REST `:8010`. Public: `p mcp ntfy` under `.pengeg.com`.
+Names: `home dns ai sloth stats git ntfy atuin sync llm llm-sidecar` under `.homelab` (Pi-hole wildcard). `ai` is Open WebUI on sidecar; `llm` and `llm-sidecar` are the llama-swap UIs. Harmonia `:5000`, restic REST `:8010`, llama-swap `:8180` on homelab and sidecar. Public: `p mcp ntfy` under `.pengeg.com`.
+
+## Models
+
+Engines and the front door are declarative; models are runtime state. Each inference host runs llama-swap on `:8180` (OpenAI `/v1`, Anthropic `/v1/messages`) with one YAML per model in `/var/lib/llama-swap/models.d`, hot-reloaded. The `ai` CLI writes them:
+
+```sh
+ai st | ls | up ID | down [ID] | logs [ID] | bench ID               # state and control
+ai add ID --from REPO:GLOB [--engine llama|radiance] [-- ARGS]      # pull weights, register
+ai add ID --engine maya --from Maya-S24 [-- --context 65536]        # Maya: compile + pack, then register
+ai edit ID | rm ID [--purge] | train on|off                         # train: Unsloth Studio takes the GPUs
+```
+
+One model holds the GPUs at a time. llama.cpp runs as a llama-swap child; Radiance and Maya run as podman units (`radiance@`, `maya@`) that an engine shim starts and stops; polkit lets the llama-swap user do that and nothing else. Everything re-downloadable lives under `/var/lib/models/cache/` (`@models`: nodatacow, outside btrbk, excluded from restic).
 
 ## Inputs
 
@@ -154,7 +173,7 @@ colmena apply --on sidecar,ovh,oracle      # push closures over the tailnet, act
 colmena apply-local --sudo                 # homelab itself (targetHost = null, never SSH-to-self)
 ```
 
-Targets accept the deploy key as root over the tailnet; sops decrypts on-host with each host's age key. oracle builds on-target. Fleet update: `nix flake update && colmena build`, apply, commit the lock.
+Targets accept the deploy key as root over the tailnet; sops decrypts on-host with each host's age key. oracle builds on-target. Fleet update: `nix flake update && nix run .#update-pins && colmena build`, apply, commit `flake.lock` and `pins.json`.
 
 ## Automation
 
@@ -162,7 +181,7 @@ Targets accept the deploy key as root over the tailnet; sops decrypts on-host wi
 
 ## Backups
 
-homelab: **btrbk** hourly `@home`/`@var-lib` snapshots → raid1 mirror; **restic** `/home` + `/var/lib` → B2; **unifi-backup** pulls UCG `.unf` into `/var/lib` first. The append-only **restic REST server** on the mirror takes pushes from blackbox, nixpad, ovh, so their state lands in the first two layers too. Client timers avoid the local prune and the B2 window (exclusive repo lock).
+homelab: **btrbk** `@home`/`@var-lib` snapshots every 4 h → raid1 mirror; **restic** `/home` + `/var/lib` → B2; **unifi-backup** pulls UCG `.unf` into `/var/lib` first. The append-only **restic REST server** on the mirror takes pushes from blackbox, nixpad, ovh and sidecar (Open WebUI state), so their state lands in the first two layers too. Client timers avoid the local prune and the B2 window (exclusive repo lock). Re-downloadable weights and engine build trees (`/var/lib/models/cache/`) stay out of every layer; Studio's GGUF exports (`/var/lib/models/gguf/`) go to B2.
 
 ## Secrets
 
