@@ -145,6 +145,8 @@
         acceleration = "rocm";
         # Tensor parallel over both cards; `ai add --engine radiance`.
         radiance.enable = true;
+        # GLM-5.3-Flash, layer split with a pinned RAM tier; `ai add --engine maya`.
+        maya.enable = true;
       };
       unsloth = {
         enable = true;
