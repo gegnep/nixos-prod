@@ -143,6 +143,8 @@
       inference = {
         enable = true;
         acceleration = "rocm";
+        # Tensor parallel over both cards; `ai add --engine radiance`.
+        radiance.enable = true;
       };
       unsloth = {
         enable = true;
