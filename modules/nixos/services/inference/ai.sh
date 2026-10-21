@@ -14,7 +14,11 @@ die() {
 
 # Temp files live until the script exits; locals would be unset by then.
 tmpfiles=()
-cleanup() { rm -rf "${tmpfiles[@]}"; }
+bgpids=()
+cleanup() {
+  if [ ${#bgpids[@]} -gt 0 ]; then kill "${bgpids[@]}" 2>/dev/null || true; fi
+  rm -rf "${tmpfiles[@]}"
+}
 trap cleanup EXIT
 
 usage() {
@@ -28,7 +32,8 @@ usage: ai [command]   (no command: interactive menu)
                            register a model (engines here: $AI_ENGINES)
   edit ID                  edit a model file in \$EDITOR, validate, install
   rm ID [--purge] [--yes]  remove a model; --purge also deletes its weights
-  pull REPO [GLOB]         download weights into $AI_CACHE/llama
+  pull [--engine E] REPO [GLOB]
+                           download weights into $AI_CACHE/<engine>
   up ID                    load a model now
   down [ID]                unload one model, or all
   logs [ID]                follow llama-swap logs (all, or one model)
@@ -131,11 +136,39 @@ hf_env() {
   printf 'HF_HOME=%s\nHF_TOKEN=%s\n' "$AI_CACHE/hf-home" "$token"
 }
 
+# Weight layout per engine: where pulls land and which file is the model.
+# Unit engines see $AI_CACHE/<engine> read-only at /models inside the container.
+engine_ext() {
+  case $1 in
+    llama) echo gguf ;;
+    radiance) echo rad ;;
+    *) die "engine '$1' has no weights layout in ai yet" ;;
+  esac
+}
+is_unit_engine() { [ "$1" != llama ]; }
+
+# The engine a model file uses: the macro its cmd starts with.
+model_engine() { yq -r '.models[].cmd' "$1" | sed -nE '1s/^\$\{([a-z]+)\}.*/\1/p'; }
+
+# Arg charset engine-shim.sh accepts; checked here too so ai add fails early.
+check_unit_args() {
+  local a
+  for a in "$@"; do
+    [[ $a =~ ^[A-Za-z0-9._/:=,+@-]+$ ]] || die "engine arg '$a': only A-Z a-z 0-9 . _ / : = , + @ - pass to a unit engine"
+  done
+}
+
 cmd_pull() {
+  local engine=llama
+  if [ "${1:-}" = --engine ]; then
+    engine=${2:-}
+    shift 2
+  fi
   local repo=${1:-} glob=${2:-} dest
-  [ -n "$repo" ] || die "usage: ai pull REPO [GLOB]"
+  [ -n "$repo" ] || die "usage: ai pull [--engine E] REPO [GLOB]"
   [[ $repo =~ ^[A-Za-z0-9._-]+/[A-Za-z0-9._-]+$ ]] || die "invalid repo '$repo'"
-  dest=$AI_CACHE/llama/$repo
+  engine_ext "$engine" >/dev/null
+  dest=$AI_CACHE/$engine/$repo
   as_owner mkdir -p "$dest"
   local args=(download "$repo" --local-dir "$dest")
   if [ -n "$glob" ]; then args+=(--include "$glob"); fi
@@ -144,11 +177,15 @@ cmd_pull() {
   printf '%s\n' "$dest"
 }
 
-# Pick the model file in a pulled directory: one GGUF, or the first shard.
-pick_gguf() {
-  local dir=$1 glob=$2 files
-  mapfile -t files < <(find "$dir" -name '*.gguf' ! -name 'mmproj*' -path "*${glob:-}*" | sort)
-  [ ${#files[@]} -gt 0 ] || die "no .gguf in $dir matching '${glob:-*}'"
+# Pick the model file in a pulled directory: one file of the engine's type, or
+# for GGUF the first shard.
+pick_weights() {
+  local dir=$1 glob=$2 ext=$3 files
+  mapfile -t files < <(find "$dir" -name "*.$ext" ! -name 'mmproj*' -path "*${glob:-}*" | sort)
+  [ ${#files[@]} -gt 0 ] || die "no .$ext in $dir matching '${glob:-*}'"
+  if [ ${#files[@]} -gt 1 ] && [ "$ext" != gguf ]; then
+    die "several .$ext files match; pass --model with one of:$(printf '\n  %s' "${files[@]}")"
+  fi
   if [ ${#files[@]} -gt 1 ]; then
     local shards
     mapfile -t shards < <(printf '%s\n' "${files[@]}" | grep -E -- '-00001-of-[0-9]+\.gguf$' || true)
@@ -180,34 +217,59 @@ cmd_add() {
     esac
   done
   [[ " $AI_ENGINES " == *" $engine "* ]] || die "engine '$engine' is not enabled on this host (have: $AI_ENGINES)"
-  [ "$engine" = llama ] || die "engine '$engine' is not wired into ai yet"
+  local ext
+  ext=$(engine_ext "$engine")
   if [ -n "$ttl" ] && ! [[ $ttl =~ ^[0-9]+$ ]]; then die "--ttl takes seconds"; fi
+  if is_unit_engine "$engine"; then check_unit_args "${extra[@]}"; fi
 
   if [ -n "$from" ]; then
     [ -z "$model" ] || die "pass --model or --from, not both"
     local repo=${from%%:*} glob='' dir
     if [[ $from == *:* ]]; then glob=${from#*:}; fi
-    dir=$(cmd_pull "$repo" "$glob")
-    model=$(pick_gguf "$dir" "$glob")
+    dir=$(cmd_pull --engine "$engine" "$repo" "$glob")
+    model=$(pick_weights "$dir" "$glob" "$ext")
   fi
   [ -n "$model" ] || die "pass --model PATH or --from REPO[:GLOB]"
   [ -r "$model" ] || die "cannot read $model"
 
-  # shellcheck disable=SC2016 # ${llama} is a llama-swap macro, expanded by llama-swap
-  local cmd='${llama}' arg mmproj
-  cmd+=" -m $(printf '%q' "$model")"
-  # A vision model ships its projector next to the weights.
-  mmproj=$(find "$(dirname "$model")" -maxdepth 1 -name 'mmproj*.gguf' | sort | head -n1)
-  if [ -n "$mmproj" ]; then
-    cmd+=" --mmproj $(printf '%q' "$mmproj")"
-    echo "ai: using projector $mmproj (drop it with ai edit $id)" >&2
-  fi
-  for arg in "${extra[@]}"; do cmd+=" $(printf '%q' "$arg")"; done
+  local cmd arg mmproj
+  case $engine in
+    llama)
+      # shellcheck disable=SC2016 # ${llama} is a llama-swap macro, expanded by llama-swap
+      cmd='${llama}'
+      cmd+=" -m $(printf '%q' "$model")"
+      # A vision model ships its projector next to the weights.
+      mmproj=$(find "$(dirname "$model")" -maxdepth 1 -name 'mmproj*.gguf' | sort | head -n1)
+      if [ -n "$mmproj" ]; then
+        cmd+=" --mmproj $(printf '%q' "$mmproj")"
+        echo "ai: using projector $mmproj (drop it with ai edit $id)" >&2
+      fi
+      for arg in "${extra[@]}"; do cmd+=" $(printf '%q' "$arg")"; done
+      ;;
+    radiance)
+      local base=$AI_CACHE/radiance/
+      model=$(realpath -- "$model")
+      [[ $model == "$base"* ]] || die "radiance reads weights only under $base (mounted at /models)"
+      check_unit_args "/models/${model#"$base"}"
+      # shellcheck disable=SC2016 # ${radiance} is a llama-swap macro
+      cmd='${radiance}'
+      cmd+=" --model /models/${model#"$base"}"
+      for arg in "${extra[@]}"; do cmd+=" $arg"; done
+      if systemctl is-active --quiet radiance-image.service; then
+        echo "ai: the radiance image is still pulling; the first load waits for it (journalctl -fu radiance-image)" >&2
+      fi
+      ;;
+  esac
 
   local tmp
   tmp=$(mktemp)
   tmpfiles+=("$tmp")
   ID=$id CMD=$cmd yq -n '.models[strenv(ID)].cmd = strenv(CMD)' >"$tmp"
+  if is_unit_engine "$engine"; then
+    # A container stops in up to 60s (finish the step, release VRAM). llama-swap
+    # must wait that long before it SIGKILLs the shim and starts the next model.
+    ID=$id yq -i '.models[strenv(ID)].unloadTimeout = 90' "$tmp"
+  fi
   if [ -n "$name" ]; then ID=$id NAME=$name yq -i '.models[strenv(ID)].name = strenv(NAME)' "$tmp"; fi
   if [ -n "$ttl" ]; then ID=$id TTL=$ttl yq -i '.models[strenv(ID)].ttl = (strenv(TTL) | tonumber)' "$tmp"; fi
   if [ "$resident" = 1 ]; then
@@ -240,9 +302,29 @@ cmd_edit() {
   echo "ai: updated $id"
 }
 
-# Weight paths a model file references (-m and --mmproj values).
+# Host paths of the weights a model file references: llama's -m/--mmproj, or a
+# unit engine's --model under /models (mapped back to $AI_CACHE/<engine>).
 model_paths() {
-  yq -r '.models[].cmd' "$1" | grep -oE -- '(^| )(-m|--mmproj) [^ ]+' | awk '{print $NF}'
+  local engine
+  engine=$(model_engine "$1")
+  if is_unit_engine "$engine"; then
+    yq -r '.models[].cmd' "$1" | grep -oE -- ' --model /models/[^ ]+' |
+      awk -v base="$AI_CACHE/$engine/" '{ sub("^/models/", base, $2); print $2 }'
+  else
+    yq -r '.models[].cmd' "$1" | grep -oE -- '(^| )(-m|--mmproj) [^ ]+' | awk '{print $NF}'
+  fi
+}
+
+# How a model file names the weights at host path $1 (unit engines see /models).
+weights_ref() {
+  local p=$1 e
+  for e in $AI_ENGINES; do
+    if is_unit_engine "$e" && [[ $p == "$AI_CACHE/$e/"* ]]; then
+      echo "/models/${p#"$AI_CACHE/$e/"}"
+      return
+    fi
+  done
+  echo "$p"
 }
 
 cmd_rm() {
@@ -270,7 +352,7 @@ cmd_rm() {
   echo "ai: removed $id"
   for p in "${paths[@]}"; do
     [[ $p == "$AI_CACHE"/* ]] || { echo "ai: keeping $p (outside $AI_CACHE)"; continue; }
-    other=$(grep -lF -- "$p" "$AI_MODELS_DIR"/*.yaml 2>/dev/null || true)
+    other=$(grep -lF -- "$(weights_ref "$p")" "$AI_MODELS_DIR"/*.yaml 2>/dev/null || true)
     if [ -n "$other" ]; then
       echo "ai: keeping $p (used by $other)"
     else
@@ -293,7 +375,7 @@ cmd_ls() {
         if [[ $running == *" $id "* ]]; then state=loaded; fi
         printf '%s %s %s %s\n' "$id" "$state" \
           "$(sed -E 's/^\$\{([a-z]+)\}.*/\1/' <<<"$cmd")" \
-          "$(grep -oE -- '-m [^ ]+' <<<"$cmd" | cut -d' ' -f2 | xargs -r basename)"
+          "$(grep -oE -- '(-m|--model) [^ ]+' <<<"$cmd" | head -n1 | cut -d' ' -f2 | xargs -r basename)"
       done < <(yq -r '.models // {} | keys | .[]' "$f")
     done
   } | column -t
@@ -326,7 +408,8 @@ cmd_st() {
   echo "== gpus"
   gpu_status
   local units
-  units=$(systemctl list-units --no-legend --plain 'radiance@*' 'maya@*' 'podman-unsloth.service' 2>/dev/null | awk '{print $1, $3, $4}')
+  units=$(systemctl list-units --no-legend --plain 'radiance@*' 'maya@*' \
+    'radiance-image.service' 'maya-image.service' 'podman-unsloth.service' 2>/dev/null | awk '{print $1, $3, $4}')
   if [ -n "$units" ]; then
     echo "== units"
     echo "$units"
@@ -349,12 +432,28 @@ cmd_down() {
     echo "ai: unloaded $id"
   else
     curl -fsS -X POST "$AI_URL/api/models/unload" >/dev/null
+    # An engine unit whose shim died (SIGKILL) keeps its VRAM; nothing else stops it.
+    if [ "$AI_ENGINES" != llama ]; then
+      root systemctl stop 'radiance@*.service' 'maya@*.service'
+    fi
     echo "ai: unloaded all"
   fi
 }
 
 cmd_logs() {
-  local id=${1:-}
+  local id=${1:-} f engine
+  f=$(model_file "${id:-_}")
+  if [ -n "$id" ] && [ -e "$f" ]; then
+    engine=$(model_engine "$f")
+    # Shim lines (refusals, start, stop) come through llama-swap; the engine's
+    # own output is in its unit's journal. Follow both.
+    if is_unit_engine "$engine"; then
+      curl -fsSN "$AI_URL/logs/stream/$id" &
+      bgpids+=($!)
+      root journalctl -f -n 100 -o cat -u "$engine@$id.service"
+      return
+    fi
+  fi
   exec curl -fsSN "$AI_URL/logs/stream${id:+/$id}"
 }
 
@@ -427,10 +526,18 @@ menu() {
   choice=$(gum choose --header "ai" "${items[@]}") || exit 0
   case $choice in
     add)
-      local id src
+      local id src engine=llama
+      if [ "$AI_ENGINES" != llama ]; then
+        # shellcheck disable=SC2086 # one word per engine
+        engine=$(gum choose --header "engine" $AI_ENGINES)
+      fi
       id=$(gum input --placeholder "model id (a-z0-9._-)")
-      src=$(gum input --placeholder "HF repo[:glob] or /path/to/model.gguf")
-      if [[ $src == /* ]]; then cmd_add "$id" --model "$src"; else cmd_add "$id" --from "$src"; fi
+      src=$(gum input --placeholder "HF repo[:glob] or /path/to/model file")
+      if [[ $src == /* ]]; then
+        cmd_add "$id" --engine "$engine" --model "$src"
+      else
+        cmd_add "$id" --engine "$engine" --from "$src"
+      fi
       ;;
     "train on") cmd_train on ;;
     "train off") cmd_train off ;;
