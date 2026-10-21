@@ -42,6 +42,8 @@
       open-webui = {
         enable = true;
         port = 3010;
+        # Seeds a fresh database only; the live one is set in the Admin Panel.
+        openaiConnections = [ { url = "http://homelab:8180/v1"; } ];
       };
       openai-oauth.enable = true;
 
