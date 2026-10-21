@@ -50,7 +50,17 @@ in
 
     services.open-webui = {
       enable = true;
-      package = pkgs.open-webui;
+      # nixpkgs#543976 enabled __structuredAttrs for buildPythonPackage. The
+      # upstream single-string makeWrapperArgs then reaches makeWrapper as one
+      # argument and fails in fixupPhase. Drop this override once nixpkgs#576893
+      # is in nixos-unstable; upstream then ships the same list.
+      package = pkgs.open-webui.overridePythonAttrs (old: {
+        makeWrapperArgs = [
+          "--set"
+          "FRONTEND_BUILD_DIR"
+          "${old.passthru.frontend}/share/open-webui"
+        ];
+      });
 
       host = "0.0.0.0";
       port = cfg.port;
