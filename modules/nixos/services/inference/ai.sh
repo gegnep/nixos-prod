@@ -403,7 +403,7 @@ cmd_train() {
       # start returns before llama-swap listens; a command right after would get
       # connection refused.
       for _ in $(seq 1 30); do
-        if curl -fsS -m 2 -o /dev/null "$AI_URL/running"; then
+        if curl -fs -m 2 -o /dev/null "$AI_URL/running"; then
           echo "ai: Studio stopped; llama-swap back"
           return 0
         fi
