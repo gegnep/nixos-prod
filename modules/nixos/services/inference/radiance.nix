@@ -26,6 +26,16 @@ let
   # Present already, or pull it now. Shared by the deploy-time prefetch and
   # each engine start (a pruned image, or a load before the prefetch finished).
   ensureImage = "${podman} image exists ${cfg.image} || ${podman} pull ${cfg.image}";
+
+  # The env file is optional for the unit (its stop commands must run even if
+  # the file is gone), so a start without it has to fail here instead.
+  preStart = pkgs.writeShellScript "radiance-prestart" ''
+    if [ -z "''${ENGINE_ARGS:-}" ]; then
+      echo "no ENGINE_ARGS: start radiance@ through llama-swap (ai up), not by hand" >&2
+      exit 1
+    fi
+    ${ensureImage}
+  '';
 in
 {
   options.mySystem.services.inference.radiance = {
@@ -85,9 +95,11 @@ in
         NotifyAccess = "all";
         Delegate = true;
         Environment = "PODMAN_SYSTEMD_UNIT=%n";
-        EnvironmentFile = "/run/llama-swap/radiance-%i.env";
+        # "-": systemd re-reads this for ExecStop/ExecStopPost; a missing file
+        # must not fail the stop (that left the unit failed after ai train on).
+        EnvironmentFile = "-/run/llama-swap/radiance-%i.env";
         RuntimeDirectory = "radiance-%i";
-        ExecStartPre = pkgs.writeShellScript "radiance-ensure-image" ensureImage;
+        ExecStartPre = preStart;
         ExecStart = lib.concatStringsSep " " [
           podman
           "run"

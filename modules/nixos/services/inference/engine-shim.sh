@@ -76,7 +76,9 @@ fi
 while :; do
   state=$(systemctl show -P ActiveState "$unit")
   case $state in
-    active | activating | reloading) ;;
+    # deactivating: something else is stopping the unit (BindsTo when llama-swap
+    # stops). Keep the env file until it is down; its stop commands load it too.
+    active | activating | reloading | deactivating) ;;
     *) die "$unit is $state ($(systemctl show -P Result "$unit")); journalctl -u $unit" ;;
   esac
   sleep 2 &
