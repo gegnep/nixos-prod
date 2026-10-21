@@ -56,6 +56,16 @@
         description = "Chat frontend (sidecar)";
       };
     };
+    # sidecar's llama-swap UI; homelab's own registers as llm.homelab.
+    proxy.vhosts.llm-sidecar = {
+      sub = "llm-sidecar";
+      upstream = "sidecar:8180";
+      dashboard = {
+        name = "llama-swap (sidecar)";
+        description = "Small models, RTX 3060";
+        path = "/ui/";
+      };
+    };
 
     proxy.externalTiles = {
       rustypaste = {
@@ -128,20 +138,17 @@
         ]; # eth + wifi
       };
 
-      ollama = {
+      # Front door for coding agents and the big models. llama.cpp's default
+      # -sm layer spreads a model over both R9700s; -sm none -mg N pins one.
+      inference = {
         enable = true;
         acceleration = "rocm";
-        environment = {
-          OLLAMA_CONTEXT_LENGTH = "65536";
-          OLLAMA_MAX_LOADED_MODELS = "3";
-          OLLAMA_NUM_PARALLEL = "2";
-        };
       };
       unsloth = {
         enable = true;
         acceleration = "rocm";
         port = 3000;
-        autoStart = false; # on demand; `ai train on|off` arrives with inference.nix
+        autoStart = false; # on demand: `ai train on|off` swaps it with llama-swap
       };
       tinyfish-search = {
         enable = true;
