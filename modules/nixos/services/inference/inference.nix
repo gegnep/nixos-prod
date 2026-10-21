@@ -93,6 +93,19 @@ let
     };
     text = builtins.readFile ./ai.sh;
   };
+
+  engineShim = pkgs.writeShellApplication {
+    name = "engine-shim";
+    runtimeInputs = [
+      pkgs.coreutils
+      pkgs.gawk
+      config.systemd.package
+    ];
+    text = builtins.readFile ./engine-shim.sh;
+  };
+
+  # Engines that run as systemd units through the shim (everything but llama).
+  unitEngines = lib.filter (e: e != "llama") cfg.engines;
 in
 {
   options.mySystem.services.inference = {
@@ -150,6 +163,14 @@ in
       internal = true;
       description = "Engine macros `ai add --engine` accepts. Engine modules append to it.";
     };
+
+    engineShim = lib.mkOption {
+      type = lib.types.package;
+      default = engineShim;
+      readOnly = true;
+      internal = true;
+      description = "llama-swap `cmd` wrapper for unit engines (engine-shim.sh). Engine macros call it.";
+    };
   };
 
   config = lib.mkIf cfg.enable {
@@ -200,8 +221,27 @@ in
           "video"
         ];
         StateDirectory = "llama-swap";
+        # The engine shim writes /run/llama-swap/<engine>-<id>.env here.
+        RuntimeDirectory = "llama-swap";
         ReadWritePaths = [ "${cacheDir}/llama" ];
       };
+    };
+
+    # The shim runs as llama-swap under NoNewPrivileges, so sudo is out. Polkit
+    # grants exactly start/stop on the engine templates, nothing else.
+    security.polkit = lib.mkIf (unitEngines != [ ]) {
+      enable = true;
+      extraConfig = ''
+        // inference.nix: llama-swap's engine shim manages engine units only.
+        polkit.addRule(function (action, subject) {
+          if (action.id == "org.freedesktop.systemd1.manage-units" &&
+              subject.user == "llama-swap" &&
+              /^(${lib.concatStringsSep "|" unitEngines})@[a-z0-9._-]+\.service$/.test(action.lookup("unit")) &&
+              (action.lookup("verb") == "start" || action.lookup("verb") == "stop")) {
+            return polkit.Result.YES;
+          }
+        });
+      '';
     };
 
     systemd.services.notify-llama-swap-fail = mkFailureUnit {
