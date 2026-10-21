@@ -3,5 +3,9 @@
     "version": "2026.9.2",
     "studioRef": "v0.1.806-beta"
   },
+  "radiance": {
+    "image": "docker.io/stilldeadcode/radiance",
+    "digest": "sha256:cdf6cc7aa9c0c33ca623773096a6a1b4ad92ab5251bc0c31ab0efefc3eabb402"
+  },
   "llamaCpp": null
 }
