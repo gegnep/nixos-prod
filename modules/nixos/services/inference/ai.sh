@@ -32,7 +32,7 @@ usage: ai [command]   (no command: interactive menu)
   up ID                    load a model now
   down [ID]                unload one model, or all
   logs [ID]                follow llama-swap logs (all, or one model)
-  bench ID [MAX_TOKENS]    one fixed prompt, report prefill and decode speed
+  bench ID [MAX_TOKENS]    ~1.9k-token prompt, report prefill and decode speed
 EOF
   if [ "$AI_STUDIO" = 1 ]; then
     echo "  train on|off|st          hand the GPUs to Unsloth Studio, or take them back"
@@ -359,17 +359,26 @@ cmd_logs() {
 }
 
 cmd_bench() {
-  local id=${1:-} max=${2:-256} body start end resp
+  local id=${1:-} max=${2:-256} body start end resp para prompt i
   [ -n "$id" ] || { interactive && id=$(pick_model "bench"); }
   [ -n "$id" ] || die "usage: ai bench ID [MAX_TOKENS]"
   cmd_up "$id" >/dev/null
-  body=$(jq -n --arg m "$id" --argjson n "$max" '{
+  # ~1.9k prompt tokens on a typical tokenizer: big enough that prefill measures
+  # throughput, small enough for a model whose context is split over several slots.
+  # The leading nonce changes the prefix, so no engine serves it from a prompt cache.
+  para="The engineer reviews a B-tree implementation: node splits on insertion, key redistribution between siblings, merges on deletion, and the invariant that every leaf sits at the same depth."
+  prompt="Run $RANDOM$RANDOM. Summarize these repeated review notes in three sentences."
+  for i in $(seq 1 40); do prompt+=" $para"; done
+  body=$(jq -n --arg m "$id" --argjson n "$max" --arg p "$prompt" '{
     model: $m, max_tokens: $n, temperature: 0, stream: false,
-    messages: [{role: "user", content: "Write a detailed technical explanation of how a B-tree handles node splits during insertion, with an example."}]
+    messages: [{role: "user", content: $p}]
   }')
   start=$(date +%s.%N)
-  resp=$(curl -fsS -m 1800 "$AI_URL/v1/chat/completions" -H 'Content-Type: application/json' -d "$body")
+  resp=$(curl -sS -m 1800 "$AI_URL/v1/chat/completions" -H 'Content-Type: application/json' -d "$body")
   end=$(date +%s.%N)
+  if jq -e '.error' <<<"$resp" >/dev/null 2>&1; then
+    die "bench failed: $(jq -r '.error.message // .error' <<<"$resp")"
+  fi
   jq -r --arg wall "$(awk -v s="$start" -v e="$end" 'BEGIN { print e - s }')" '
     if .timings then
       "prefill \(.timings.prompt_n) tok @ \(.timings.prompt_per_second | floor) tok/s, decode \(.timings.predicted_n) tok @ \(.timings.predicted_per_second * 10 | floor / 10) tok/s"
