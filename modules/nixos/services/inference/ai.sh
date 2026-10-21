@@ -42,6 +42,13 @@ EOF
   if [ "$AI_STUDIO" = 1 ]; then
     echo "  train on|off|st          hand the GPUs to Unsloth Studio, or take them back"
   fi
+  if [[ " $AI_ENGINES " == *" maya "* ]]; then
+    cat <<EOF2
+
+  maya: ai add ID --engine maya --from QUANT [-- SETUP ARGS]   (e.g. --from Maya-S24 -- --context 65536)
+  maya-setup QUANT [SETUP ARGS]   compile, pack and configure QUANT again (after a maya pin bump)
+EOF2
+  fi
 }
 
 # Run a command as root (or as the caller when AI_SUDO is empty).
@@ -142,6 +149,7 @@ engine_ext() {
   case $1 in
     llama) echo gguf ;;
     radiance) echo rad ;;
+    maya) die "maya downloads and checks its own weights at setup (ai add ID --engine maya --from QUANT)" ;;
     *) die "engine '$1' has no weights layout in ai yet" ;;
   esac
 }
@@ -217,10 +225,29 @@ cmd_add() {
     esac
   done
   [[ " $AI_ENGINES " == *" $engine "* ]] || die "engine '$engine' is not enabled on this host (have: $AI_ENGINES)"
-  local ext
-  ext=$(engine_ext "$engine")
   if [ -n "$ttl" ] && ! [[ $ttl =~ ^[0-9]+$ ]]; then die "--ttl takes seconds"; fi
   if is_unit_engine "$engine"; then check_unit_args "${extra[@]}"; fi
+
+  local cmd arg mmproj tmp
+  if [ "$engine" = maya ]; then
+    # Maya's setup bakes everything (GPUs, context, env) into its config; the
+    # model file only names that config. -- ARGS go to the setup.
+    [ -n "$from" ] && [ -z "$model" ] || die "usage: ai add ID --engine maya --from QUANT [-- SETUP ARGS]"
+    maya_setup "$from" "${extra[@]}"
+    # shellcheck disable=SC2016 # ${maya} is a llama-swap macro
+    cmd='${maya} --config '"maya-${from,,}-hip.json"
+    tmp=$(mktemp)
+    tmpfiles+=("$tmp")
+    ID=$id CMD=$cmd yq -n '.models[strenv(ID)].cmd = strenv(CMD)' >"$tmp"
+    # Maya's stop: 40 s to wrap the answer in progress, 50 s for the engine, then
+    # podman's 150 s ceiling; llama-swap must outwait it (docs/SETTINGS.md).
+    ID=$id yq -i '.models[strenv(ID)].unloadTimeout = 180' "$tmp"
+    finish_add "$id" "$tmp" "$name" "$ttl" "$resident"
+    return
+  fi
+
+  local ext
+  ext=$(engine_ext "$engine")
 
   if [ -n "$from" ]; then
     [ -z "$model" ] || die "pass --model or --from, not both"
@@ -232,7 +259,6 @@ cmd_add() {
   [ -n "$model" ] || die "pass --model PATH or --from REPO[:GLOB]"
   [ -r "$model" ] || die "cannot read $model"
 
-  local cmd arg mmproj
   case $engine in
     llama)
       # shellcheck disable=SC2016 # ${llama} is a llama-swap macro, expanded by llama-swap
@@ -261,7 +287,6 @@ cmd_add() {
       ;;
   esac
 
-  local tmp
   tmp=$(mktemp)
   tmpfiles+=("$tmp")
   ID=$id CMD=$cmd yq -n '.models[strenv(ID)].cmd = strenv(CMD)' >"$tmp"
@@ -270,6 +295,12 @@ cmd_add() {
     # must wait that long before it SIGKILLs the shim and starts the next model.
     ID=$id yq -i '.models[strenv(ID)].unloadTimeout = 90' "$tmp"
   fi
+  finish_add "$id" "$tmp" "$name" "$ttl" "$resident"
+}
+
+# The part of ai add every engine shares: name, ttl, resident group, install.
+finish_add() {
+  local id=$1 tmp=$2 name=$3 ttl=$4 resident=$5
   if [ -n "$name" ]; then ID=$id NAME=$name yq -i '.models[strenv(ID)].name = strenv(NAME)' "$tmp"; fi
   if [ -n "$ttl" ]; then ID=$id TTL=$ttl yq -i '.models[strenv(ID)].ttl = (strenv(TTL) | tonumber)' "$tmp"; fi
   if [ "$resident" = 1 ]; then
@@ -281,6 +312,32 @@ cmd_add() {
   await_reload "$id" present
   echo "ai: added $id"
   cat "$(model_file "$id")"
+}
+
+# Maya's setup for QUANT (Maya-S24, Maya-S-v2-IQ2_XXS, ...): compile, pack and
+# config, in maya-setup@QUANT. Weights already in $AI_CACHE/maya/models/QUANT
+# are used; otherwise the setup downloads them (95-156 GB). No GPU work, so
+# llama-swap keeps serving. 20-60 minutes the first time.
+maya_setup() {
+  local quant=${1:-}
+  [ -n "$quant" ] || die "usage: ai maya-setup QUANT [SETUP ARGS]"
+  shift
+  [[ " $AI_ENGINES " == *" maya "* ]] || die "maya is not enabled on this host"
+  [[ $quant =~ ^Maya-[A-Za-z0-9._-]+$ ]] || die "invalid quant '$quant' (e.g. Maya-S24, Maya-S-v2-IQ2_XXS)"
+  check_unit_args "$@"
+  local unit="maya-setup@$quant.service" have
+  have=$(find "$AI_CACHE/maya/models/$quant" -maxdepth 1 -name '*.gguf' 2>/dev/null | wc -l || true)
+  if [ "$have" = 0 ]; then
+    echo "ai: no weights in $AI_CACHE/maya/models/$quant; the setup downloads them (95 to 156 GB by quant)" >&2
+  fi
+  printf 'SETUP_ARGS=--model %s %s\n' "$quant" "$*" | root tee "/run/maya-setup-$quant.env" >/dev/null
+  echo "ai: running $unit (image build on first use, then compile and pack; Ctrl+C leaves it running)"
+  root journalctl -f -n 0 -o cat -u "$unit" &
+  bgpids+=($!)
+  if ! root systemctl start "$unit"; then
+    die "$unit failed; journalctl -u $unit"
+  fi
+  echo "ai: $unit done"
 }
 
 cmd_edit() {
@@ -347,6 +404,9 @@ cmd_rm() {
     mapfile -t paths < <(model_paths "$f")
   fi
   confirm "Remove $id$([ "$purge" = 1 ] && echo " and its weights")?" || die "aborted"
+  if [ "$purge" = 1 ] && [ "$(model_engine "$f")" = maya ]; then
+    echo "ai: maya weights stay in $AI_CACHE/maya/models/<quant> (setups share them); delete that folder by hand"
+  fi
   root rm -f "$f"
   await_reload "$id" absent
   echo "ai: removed $id"
@@ -408,7 +468,7 @@ cmd_st() {
   echo "== gpus"
   gpu_status
   local units
-  units=$(systemctl list-units --no-legend --plain 'radiance@*' 'maya@*' \
+  units=$(systemctl list-units --no-legend --plain 'radiance@*' 'maya@*' 'maya-setup@*' \
     'radiance-image.service' 'maya-image.service' 'podman-unsloth.service' 2>/dev/null | awk '{print $1, $3, $4}')
   if [ -n "$units" ]; then
     echo "== units"
@@ -550,6 +610,7 @@ if [ $# -gt 0 ]; then shift; fi
 case $sub in
   "") menu ;;
   st | ls | add | edit | rm | pull | up | down | logs | bench | train) "cmd_$sub" "$@" ;;
+  maya-setup) maya_setup "$@" ;;
   -h | --help | help) usage ;;
   *)
     usage >&2
