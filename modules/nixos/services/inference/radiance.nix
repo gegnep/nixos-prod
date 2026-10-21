@@ -90,6 +90,10 @@ in
       # ai train on) takes the engine and its VRAM down with it.
       bindsTo = [ "llama-swap.service" ];
       after = [ "llama-swap.service" ];
+      # A deploy must not restart a changed instance by itself: it would start
+      # outside llama-swap with no env file (prestart refuses; switch exits 4).
+      # When the front door changes, BindsTo already takes the engine down.
+      restartIfChanged = false;
       serviceConfig = {
         Type = "notify";
         NotifyAccess = "all";
