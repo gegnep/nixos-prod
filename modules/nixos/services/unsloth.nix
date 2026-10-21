@@ -2,6 +2,7 @@
 {
   config,
   lib,
+  pkgs,
   mkFailureUnit,
   ...
 }:
@@ -39,6 +40,16 @@ let
   };
 
   wheelsDir = "/var/lib/unsloth/wheels";
+
+  # llama-swap's ExecCondition. Exit 1 skips the start without failing the unit.
+  studioIdle = pkgs.writeShellScript "llama-swap-studio-idle" ''
+    case $(${config.systemd.package}/bin/systemctl show -P ActiveState podman-unsloth.service) in
+      active | activating | reloading)
+        echo "Unsloth Studio holds the GPUs; llama-swap stays down until ai train off"
+        exit 1
+        ;;
+    esac
+  '';
 in
 {
   options.mySystem.services.unsloth = {
@@ -182,8 +193,22 @@ in
       ++ gpuFlags.${cfg.acceleration};
     };
 
-    # A stop now ends in SIGTERM (143); treat that as a clean stop, not a failure.
-    systemd.services.podman-unsloth.serviceConfig.SuccessExitStatus = [ 143 ];
+    systemd.services.podman-unsloth = {
+      # A stop now ends in SIGTERM (143); treat that as a clean stop, not a failure.
+      serviceConfig.SuccessExitStatus = [ 143 ];
+      # A deploy must not kill a training run. Changes apply at the next ai train on.
+      restartIfChanged = false;
+    };
+
+    # Every switch starts multi-user.target again, which starts llama-swap even
+    # after ai train on stopped it. llama.cpp models have no GPU check of their
+    # own (the engine shim guards only radiance@ and maya@), so skip that start
+    # while Studio runs. `+`: the check runs outside llama-swap's sandbox, where
+    # ProtectProc=invisible breaks systemctl. After=: with autoStart, Studio wins.
+    systemd.services.llama-swap = lib.mkIf config.mySystem.services.inference.enable {
+      after = [ "podman-unsloth.service" ];
+      serviceConfig.ExecCondition = "+${studioIdle}";
+    };
 
     networking.firewall.interfaces."tailscale0".allowedTCPPorts = [ cfg.port ];
 
