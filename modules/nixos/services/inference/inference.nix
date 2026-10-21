@@ -53,7 +53,7 @@ let
     unloadTimeout = 30;
     logLevel = "info";
     macros = {
-      llama = "${lib.getExe' llamaCpp "llama-server"} --host 127.0.0.1 --port \${PORT} --alias \${MODEL_ID} --no-webui";
+      llama = "${lib.getExe' llamaCpp "llama-server"} --host 127.0.0.1 --port \${PORT} --alias \${MODEL_ID} --no-ui";
     }
     // cfg.macros;
   } cfg.settings;
