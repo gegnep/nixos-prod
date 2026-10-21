@@ -1,0 +1,31 @@
+# containers/maya/Containerfile  (gegnep/nixos-prod)
+#
+# Toolchain image for Project Maya's HIP engine (github.com/mw00/project-maya):
+# the "system ROCm 7" Ubuntu its installer expects. Maya itself is not in the
+# image: maya-entrypoint fetches the pinned commit into /data/src/<commit> (the
+# cache volume), where maya.sh builds, sets up and serves.
+#
+# Built by the maya-image unit (modules/nixos/services/inference/maya.nix):
+# tag = localhost/maya-rocm:<rocm>-<ctxhash>. Manual build, for debugging only:
+#   sudo podman build -t localhost/maya-rocm:test containers/maya/
+#
+# ROCm 7.2.1 is what upstream validated on the R9700 (docs/AMD_MAYA.md). Its
+# hipBLASLt 1.2.2 matches Maya's gfx1201 tuning table
+# (tools/hip/gfx1201-glm-hipblaslt-100202.txt); 7.2.0 ships 1.2.1.
+ARG ROCM_BASE=docker.io/rocm/dev-ubuntu-24.04:7.2.1@sha256:fe29799baf7b8db986a707110c15579dc0fb6e39d48973fbb82dfc33a0c7e179
+FROM ${ROCM_BASE}
+
+# The dev image has the compiler, not the libraries:
+#   hipblas, hipblaslt  the engine's GEMMs (find_package in cmake/hip_backend.cmake)
+#   rocwmma-dev         gfx1201's f16q prompt attention (src/kernels/cuda/glm_batch.cu)
+# The rest is what maya.sh checks for: CMake 3.24+, a C++20 compiler, Python 3.10+
+# with venv, git for the checkout.
+RUN apt-get update && DEBIAN_FRONTEND=noninteractive apt-get install -y --no-install-recommends \
+      hipblas-dev hipblaslt-dev rocwmma-dev \
+      cmake ninja-build build-essential \
+      python3 python3-venv python3-pip python3-dev \
+      git ca-certificates curl unzip \
+    && rm -rf /var/lib/apt/lists/*
+
+COPY entrypoint.sh /usr/local/bin/maya-entrypoint
+ENTRYPOINT ["/usr/local/bin/maya-entrypoint"]

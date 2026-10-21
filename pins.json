@@ -7,5 +7,9 @@
     "image": "docker.io/stilldeadcode/radiance",
     "digest": "sha256:cdf6cc7aa9c0c33ca623773096a6a1b4ad92ab5251bc0c31ab0efefc3eabb402"
   },
-  "llamaCpp": null
+  "llamaCpp": null,
+  "maya": {
+    "tag": "v1.1.20",
+    "commit": "35bb2b22a2e2c65b91e24a41d4b026bfa4e89557"
+  }
 }
