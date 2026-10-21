@@ -400,7 +400,16 @@ cmd_train() {
     off)
       root systemctl stop podman-unsloth.service
       root systemctl start llama-swap.service
-      echo "ai: Studio stopped; llama-swap back"
+      # start returns before llama-swap listens; a command right after would get
+      # connection refused.
+      for _ in $(seq 1 30); do
+        if curl -fsS -m 2 -o /dev/null "$AI_URL/running"; then
+          echo "ai: Studio stopped; llama-swap back"
+          return 0
+        fi
+        sleep 1
+      done
+      die "llama-swap started but not answering at $AI_URL after 30s; see journalctl -u llama-swap"
       ;;
     st) systemctl is-active podman-unsloth.service || true ;;
     *) die "usage: ai train on|off|st" ;;
