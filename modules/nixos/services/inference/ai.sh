@@ -333,7 +333,10 @@ maya_setup() {
   printf 'SETUP_ARGS=--model %s %s\n' "$quant" "$*" | root tee "/run/maya-setup-$quant.env" >/dev/null
   echo "ai: running $unit (image build on first use, then compile and pack; Ctrl+C leaves it running)"
   # maya-image too: on first use (or after a Containerfile edit) its build runs first.
-  root journalctl -f -n 0 -o cat -u maya-image.service -u "$unit" &
+  # Not through sudo: cleanup's kill cannot signal a root process, so a sudo'd
+  # follower outlived ai and kept printing into the terminal. wheel reads the
+  # system journal without it.
+  journalctl -f -n 0 -o cat -u maya-image.service -u "$unit" &
   bgpids+=($!)
   if ! root systemctl start "$unit"; then
     die "$unit failed; journalctl -u $unit"
