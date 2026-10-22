@@ -5,11 +5,4 @@
   # Static /etc path: a store path would change every unit on each cacert bump.
   systemd.globalEnvironment.NIX_SSL_CERT_FILE = "/etc/ssl/certs/ca-certificates.crt";
   environment.variables.NIX_SSL_CERT_FILE = "/etc/ssl/certs/ca-certificates.crt";
-
-  security.pki.caCertificateBlacklist = [
-    "emSign ECC Root CA - G3"
-    "emSign Root CA - C1"
-    "emSign ECC Root CA - C3"
-    "Comodo AAA Services root"
-  ];
 }
