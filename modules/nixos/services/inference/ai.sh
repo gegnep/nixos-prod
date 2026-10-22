@@ -47,6 +47,7 @@ EOF
 
   maya: ai add ID --engine maya --from QUANT [-- SETUP ARGS]   (e.g. --from Maya-S24 -- --context 65536)
   maya-setup QUANT [SETUP ARGS]   compile, pack and configure QUANT again (after a maya pin bump)
+  maya-bench QUANT                Maya's own --bench and --report for QUANT (llama-swap pauses)
 EOF2
   fi
 }
@@ -344,6 +345,41 @@ maya_setup() {
   echo "ai: $unit done"
 }
 
+# Maya's standard benchmark (./maya.sh --bench, then --report) for QUANT's
+# config, in maya-bench@QUANT. It needs the GPUs, so llama-swap stops for it
+# (its ExecCondition keeps a deploy from starting it meanwhile) and comes back
+# after. Results: $AI_CACHE/maya/bench/QUANT/.
+maya_bench() {
+  local quant=${1:-}
+  [ -n "$quant" ] || die "usage: ai maya-bench QUANT"
+  [[ " $AI_ENGINES " == *" maya "* ]] || die "maya is not enabled on this host"
+  [[ $quant =~ ^Maya-[A-Za-z0-9._-]+$ ]] || die "invalid quant '$quant' (e.g. Maya-S24, Maya-M-Derisked)"
+  if systemctl is-active --quiet podman-unsloth.service; then
+    die "Unsloth Studio holds the GPUs; run ai train off first"
+  fi
+  local unit="maya-bench@$quant.service" rc=0
+  printf 'BENCH_ARGS=--config maya-%s-hip.json\n' "${quant,,}" | root tee "/run/maya-bench-$quant.env" >/dev/null
+  echo "ai: stopping llama-swap; $unit takes a few minutes (Ctrl+C leaves it running, then: sudo systemctl start llama-swap)"
+  root systemctl stop llama-swap.service
+  journalctl -f -n 0 -o cat -u "$unit" &
+  bgpids+=($!)
+  root systemctl start "$unit" || rc=$?
+  root systemctl start llama-swap.service
+  wait_front_door
+  [ "$rc" = 0 ] || die "$unit failed; journalctl -u $unit (llama-swap is back)"
+  echo "ai: llama-swap back; results in $AI_CACHE/maya/bench/$quant/ (maya-bench.txt, maya-report.txt, maya-bench.log)"
+}
+
+# start returns before llama-swap listens; a command right after would get
+# connection refused.
+wait_front_door() {
+  for _ in $(seq 1 30); do
+    if curl -fs -m 2 -o /dev/null "$AI_URL/running"; then return 0; fi
+    sleep 1
+  done
+  die "llama-swap started but not answering at $AI_URL after 30s; see journalctl -u llama-swap"
+}
+
 cmd_edit() {
   local id=${1:-} tmp
   [ -n "$id" ] || { interactive && id=$(pick_model "edit"); }
@@ -472,7 +508,7 @@ cmd_st() {
   echo "== gpus"
   gpu_status
   local units
-  units=$(systemctl list-units --no-legend --plain 'radiance@*' 'maya@*' 'maya-setup@*' \
+  units=$(systemctl list-units --no-legend --plain 'radiance@*' 'maya@*' 'maya-setup@*' 'maya-bench@*' \
     'radiance-image.service' 'maya-image.service' 'podman-unsloth.service' 2>/dev/null | awk '{print $1, $3, $4}')
   if [ -n "$units" ]; then
     echo "== units"
@@ -563,16 +599,8 @@ cmd_train() {
     off)
       root systemctl stop podman-unsloth.service
       root systemctl start llama-swap.service
-      # start returns before llama-swap listens; a command right after would get
-      # connection refused.
-      for _ in $(seq 1 30); do
-        if curl -fs -m 2 -o /dev/null "$AI_URL/running"; then
-          echo "ai: Studio stopped; llama-swap back"
-          return 0
-        fi
-        sleep 1
-      done
-      die "llama-swap started but not answering at $AI_URL after 30s; see journalctl -u llama-swap"
+      wait_front_door
+      echo "ai: Studio stopped; llama-swap back"
       ;;
     st) systemctl is-active podman-unsloth.service || true ;;
     *) die "usage: ai train on|off|st" ;;
@@ -615,6 +643,7 @@ case $sub in
   "") menu ;;
   st | ls | add | edit | rm | pull | up | down | logs | bench | train) "cmd_$sub" "$@" ;;
   maya-setup) maya_setup "$@" ;;
+  maya-bench) maya_bench "$@" ;;
   -h | --help | help) usage ;;
   *)
     usage >&2

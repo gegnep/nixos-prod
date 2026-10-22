@@ -28,13 +28,12 @@ let
   ctxHash = lib.substring 11 8 (baseNameOf "${containerDir}");
   image = "localhost/maya-rocm:7.2.1-${ctxHash}";
 
-  # podman run flags both units share. Upstream has no container guide; these
-  # follow its AMD notes and Strata's advice: pinned RAM tier (memlock), the ROCm
-  # runtime's NUMA calls (seccomp), host network on 127.0.0.1.
+  # podman run flags all three units share. Upstream has no container guide;
+  # these follow its AMD notes and Strata's advice: pinned RAM tier (memlock),
+  # the ROCm runtime's NUMA calls (seccomp). The network is per unit (mkRun).
   runFlags = [
     "--pull=never"
     "--init"
-    "--network=host"
     "--ulimit=memlock=-1:-1"
     "--shm-size=2g"
     "--security-opt=seccomp=unconfined"
@@ -46,20 +45,23 @@ let
     "--volume=${dataDir}:/data"
   ];
 
-  # $1: instance. ARGS_VAR comes from the unit's EnvironmentFile and is split on
-  # whitespace here (set -f: never globbed); ai and the engine shim restrict its
-  # characters. llama-swap's uid is read at start: it is not a fixed number.
+  # $1: instance, then fixed args from the unit's ExecStart. ARGS_VAR comes from
+  # the unit's EnvironmentFile and is split on whitespace here (set -f: never
+  # globbed); ai and the engine shim restrict its characters. llama-swap's uid
+  # is read at start: it is not a fixed number.
   mkRun =
     {
       name,
       argsVar,
       podmanArgs,
       entryArgs,
+      network ? "host",
     }:
     pkgs.writeShellScript name ''
       set -euo pipefail
       set -f
       inst=$1
+      shift
       if [ -z "''${${argsVar}:-}" ]; then
         echo "no ${argsVar}: start this unit through ai or llama-swap, not by hand" >&2
         exit 1
@@ -67,9 +69,9 @@ let
       uid=$(${pkgs.coreutils}/bin/id -u llama-swap)
       gid=$(${pkgs.coreutils}/bin/id -g llama-swap)
       # shellcheck disable=SC2086 # word splitting of ${argsVar} is the point
-      exec ${podman} run ${podmanArgs} \
+      exec ${podman} run ${podmanArgs} --network=${network} \
         ${lib.escapeShellArgs runFlags} --user="$uid:$gid" \
-        ${image} ${entryArgs} ''$${argsVar}
+        ${image} ${entryArgs} ''$${argsVar} "$@"
     '';
 
   setupRun = mkRun {
@@ -107,6 +109,42 @@ let
       "--plain"
     ];
   };
+
+  # maya.sh --bench / --report (CONTRIBUTING.md's speed report). The bench drives
+  # the engine over stdin, so no network: its "is Maya running?" probe goes to
+  # the config's port 8080, which is Pi-hole's on the host network.
+  benchRun = mkRun {
+    name = "maya-bench-run";
+    argsVar = "BENCH_ARGS";
+    network = "none";
+    podmanArgs = ''--name="maya-bench-$inst" --rm --replace --log-driver=passthrough'';
+    entryArgs = lib.escapeShellArgs [
+      "serve"
+      pins.commit
+      "--backend"
+      "hip"
+      "--plain"
+    ];
+  };
+
+  # Both commands write into the checkout and overwrite each other's runs, so
+  # each quant's last results are copied to bench/<quant>/.
+  benchKeep = pkgs.writeShellScript "maya-bench-keep" ''
+    set -euo pipefail
+    out=${dataDir}/bench/$1
+    ${pkgs.coreutils}/bin/install -d -m 0755 "$out"
+    for f in maya-bench.txt maya-report.txt maya-bench.log; do
+      ${pkgs.coreutils}/bin/install -m 0644 ${dataDir}/src/${pins.commit}/$f "$out/$f"
+    done
+  '';
+
+  # llama-swap's second ExecCondition (Studio's is in unsloth.nix).
+  benchIdle = pkgs.writeShellScript "llama-swap-maya-bench-idle" ''
+    if [ -n "$(${config.systemd.package}/bin/systemctl list-units --plain --no-legend --state=active,activating 'maya-bench@*')" ]; then
+      echo "a Maya benchmark holds the GPUs; llama-swap stays down until ai maya-bench starts it"
+      exit 1
+    fi
+  '';
 in
 {
   options.mySystem.services.inference.maya = {
@@ -178,6 +216,29 @@ in
         TimeoutStartSec = "4h";
       };
     };
+
+    # GPU work: ai maya-bench stops llama-swap first and starts it after. No
+    # Conflicts=llama-swap: a deploy starting llama-swap would then stop the
+    # bench; the ExecCondition below skips that start instead.
+    systemd.services."maya-bench@" = {
+      description = "Maya benchmark and report for %i";
+      requires = [ "maya-image.service" ];
+      after = [ "maya-image.service" ];
+      restartIfChanged = false;
+      serviceConfig = {
+        Type = "oneshot";
+        EnvironmentFile = "-/run/maya-bench-%i.env";
+        ExecStart = [
+          "${benchRun} %i --bench"
+          "${benchRun} %i --report"
+        ];
+        ExecStartPost = "${benchKeep} %i";
+        ExecStopPost = "${podman} rm -f --ignore maya-bench-%i";
+        TimeoutStartSec = "1h";
+      };
+    };
+
+    systemd.services.llama-swap.serviceConfig.ExecCondition = [ "+${benchIdle}" ];
 
     # Same shape as radiance@ (see radiance.nix): bound to llama-swap, never
     # restarted by a deploy, env file optional for the stop commands.
