@@ -2,11 +2,14 @@
   config,
   lib,
   pkgs,
+  inputs,
   ...
 }:
 
 let
   cfg = config.mySystem.services.mcp-nixos;
+
+  pinnedPkgs = inputs.nixpkgs-mcp.legacyPackages.${pkgs.stdenv.hostPlatform.system};
 
   # v3.0.0 merged PR 159 (channel discovery via _cat/aliases + max-generation
   # resolution), so the patch we carried is dropped. FLAKE_INDEX is still
@@ -14,12 +17,17 @@ let
   # generation is live at a time), so the wildcard substitution stays; the
   # backend accepts wildcard alias patterns for _search/_count.
   # --replace-fail keeps this loud if upstream fixes it.
-  patchedPackage = pkgs.mcp-nixos.overridePythonAttrs (old: {
-    postPatch = (old.postPatch or "") + ''
-      substituteInPlace mcp_nixos/config.py \
-        --replace-fail 'FLAKE_INDEX = "latest-44-group-manual"' 'FLAKE_INDEX = "latest-*-group-manual"'
-    '';
-  });
+  patchedPackage =
+    lib.warnIf (!(pkgs.python3Packages.fastmcp-slim.meta.broken or false))
+      "mcp-nixos: fastmcp-slim is no longer broken on current nixpkgs; drop the nixpkgs-mcp pin"
+      (
+        pinnedPkgs.mcp-nixos.overridePythonAttrs (old: {
+          postPatch = (old.postPatch or "") + ''
+            substituteInPlace mcp_nixos/config.py \
+              --replace-fail 'FLAKE_INDEX = "latest-44-group-manual"' 'FLAKE_INDEX = "latest-*-group-manual"'
+          '';
+        })
+      );
 in
 {
   options.mySystem.services.mcp-nixos = {

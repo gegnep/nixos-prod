@@ -34,6 +34,11 @@
       inputs.nixpkgs.follows = "nixpkgs";
     };
 
+    # mcp-nixos only: fastmcp-slim is broken against python mcp >= 2 on current
+    # unstable. Last rev where it built. Drop when the warning in
+    # modules/nixos/services/mcp-nixos.nix fires.
+    nixpkgs-mcp.url = "github:NixOS/nixpkgs/02c087f3fe673c9e317f206a627cb6b910336dbe";
+
     # Desktop config as a SOURCE TREE (flake = false): we import individual
     # self-contained home modules by store path without inheriting its inputs.
     desktop = {
