@@ -37,6 +37,20 @@
           frictionless = pyPrev.frictionless.overridePythonAttrs (_: {
             doCheck = false;
           });
+          # posthog is marked broken for mcp >= 2, but mcp is only a test input
+          # (nativeCheckInputs); runtime deps are backoff/distro/requests/typing-extensions.
+          # Pulled in via open-webui -> chromadb on sidecar.
+          posthog =
+            prev.lib.warnIf (!(pyPrev.posthog.meta.broken or false))
+              "posthog: no longer marked broken upstream; drop the override in core/nix.nix"
+              (
+                pyPrev.posthog.overridePythonAttrs (old: {
+                  doCheck = false;
+                  meta = old.meta // {
+                    broken = false;
+                  };
+                })
+              );
         })
       ];
     })
