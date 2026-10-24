@@ -1,15 +1,15 @@
 {
   "unsloth": {
-    "version": "2026.9.2",
-    "studioRef": "v0.1.806-beta"
+    "version": "2026.10.8",
+    "studioRef": "v0.1.910-beta"
   },
   "radiance": {
     "image": "docker.io/stilldeadcode/radiance",
-    "digest": "sha256:cdf6cc7aa9c0c33ca623773096a6a1b4ad92ab5251bc0c31ab0efefc3eabb402"
+    "digest": "sha256:e82764045e46ebae07e33961f17dedba981c0d07336dfcddd67e4b3b042b8600"
   },
   "llamaCpp": null,
   "maya": {
-    "tag": "v1.1.20",
-    "commit": "35bb2b22a2e2c65b91e24a41d4b026bfa4e89557"
+    "tag": "v1.1.27",
+    "commit": "4615f346d9311dd1ce9f5738ab04446f023a6e42"
   }
 }

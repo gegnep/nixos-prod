@@ -9,7 +9,7 @@ in
 
     image = lib.mkOption {
       type = lib.types.str;
-      default = "pihole/pihole:2026.05.0";
+      default = "pihole/pihole:2026.10.0";
       description = "Pinned Pi-hole container image";
     };
 
