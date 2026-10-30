@@ -1,7 +1,7 @@
 { ... }:
 {
   mySystem.services.factorio = {
-    enable = true;
+    enable = false;
     admins = [ "pengeg" ];
     username = "pengeg";
     mods = [
