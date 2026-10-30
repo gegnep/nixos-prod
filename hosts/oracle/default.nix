@@ -3,6 +3,7 @@
   imports = [
     ./hardware-configuration.nix
     ./disko.nix
+    ./monifactory.nix
     ../../modules/nixos
   ];
 
@@ -22,7 +23,27 @@
 
     services = {
       fail2ban.enable = true;
-      beszel.agent.enable = true;
+      beszel.agent = {
+        enable = true;
+        containers = true;
+      };
+      resticClient = {
+        enable = true;
+        paths = [ "/var/lib/monifactory" ];
+        # all re-downloadable from the pinned pack/forge/mod URLs on next start
+        exclude = [
+          "/var/lib/monifactory/mods"
+          "/var/lib/monifactory/libraries"
+          "/var/lib/monifactory/packs"
+          "/var/lib/monifactory/logs"
+          "/var/lib/monifactory/crash-reports"
+          "/var/lib/monifactory/.tmp"
+          "/var/lib/monifactory/backups"
+          "/var/lib/monifactory/*.jar"
+        ];
+        # 4x/day; clear of homelab's 02:00 prune and 03:00 B2 run
+        onCalendar = "*-*-* 05,11,17,23:00:00 UTC";
+      };
     };
   };
 }

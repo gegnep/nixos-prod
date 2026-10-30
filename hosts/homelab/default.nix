@@ -105,6 +105,7 @@
           "nixpad"
           "ovh"
           "sidecar"
+          "oracle"
         ];
       };
       unifi-backup.enable = true;

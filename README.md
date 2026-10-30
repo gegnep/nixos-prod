@@ -55,6 +55,7 @@ mySystem
     ├── atuin          { enable port openRegistration }
     ├── syncthing      { enable guiPort dataDir lanSync settings }
     ├── factorio       { enable port admins username mods extraSettings }
+    ├── monifactory    { enable image packVersion forgeVersion port memory players mods }
     ├── rustypaste     { enable port url maxContentLength }
     ├── mcp-nixos      { enable port package funnel }
     ├── fail2ban.enable
