@@ -11,5 +11,9 @@
   "maya": {
     "tag": "v1.1.39",
     "commit": "376b4b87402bc992af7b4a8dec089ef7cba7801c"
+  },
+  "pihole": {
+    "image": "docker.io/pihole/pihole",
+    "tag": "2026.10.0"
   }
 }

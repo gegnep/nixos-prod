@@ -2,6 +2,7 @@
 
 let
   cfg = config.mySystem.services.pihole;
+  pins = (lib.importJSON ../../../pins.json).pihole;
 in
 {
   options.mySystem.services.pihole = {
@@ -9,8 +10,9 @@ in
 
     image = lib.mkOption {
       type = lib.types.str;
-      default = "pihole/pihole:2026.10.0";
-      description = "Pinned Pi-hole container image";
+      default = "${pins.image}:${pins.tag}";
+      defaultText = lib.literalMD "`pihole.image`:`pihole.tag` in `pins.json`";
+      description = "Pi-hole container image. Bump with `nix run .#update-pins pihole`.";
     };
 
     timezone = lib.mkOption {

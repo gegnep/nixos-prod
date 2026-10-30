@@ -159,7 +159,7 @@ colmena build                              # then apply as above
 | `unsloth` | PyPI version + studio tag | Image rebuilds on next `ai train on` (~10 min, `journalctl -fu unsloth-image`). |
 | `radiance` | Docker Hub `latest` digest | `radiance-image` pulls at deploy, non-blocking. |
 | `maya` | git tag + commit | `ai maya-setup QUANT` before serving; serve refuses a commit with no checkout. |
-| Pi-hole | `image` default in `pihole.nix` | Hand-bumped. Container restarts on switch. |
+| `pihole` | Docker Hub release tag | Container restarts on switch. |
 | Base images | `FROM` in `containers/*/Containerfile*` | Hand-bumped. Any edit retags and rebuilds. |
 
 Old images: `sudo podman image prune -f`. Never `podman system prune` (kills the uv cache mount).

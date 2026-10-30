@@ -1,7 +1,7 @@
 # Bump external version pins in pins.json to the latest upstream release.
 #   update-pins            update every pin that is set (null pins are skipped)
 #   update-pins NAME...    update only NAMEs; creates the pin if missing or null
-# Pins: unsloth radiance maya llamaCpp
+# Pins: unsloth radiance maya pihole llamaCpp
 
 root=$(git rev-parse --show-toplevel)
 pins=$root/pins.json
@@ -56,6 +56,18 @@ update_radiance() {
   set_pin radiance "$(jq -n --arg i "$image" --arg d "$digest" '{image: $i, digest: $d}')"
 }
 
+update_pihole() {
+  local image=docker.io/pihole/pihole tag
+  # Release tags are YYYY.MM.N; skip latest, nightly, dev and arch tags.
+  tag=$(skopeo list-tags "docker://$image" |
+    jq -r '.Tags[] | select(test("^[0-9]{4}\\.[0-9]{2}\\.[0-9]+$"))' | sort -V | tail -n1)
+  [ -n "$tag" ] || {
+    echo "error: no release tag at $image" >&2
+    return 1
+  }
+  set_pin pihole "$(jq -n --arg i "$image" --arg t "$tag" '{image: $i, tag: $t}')"
+}
+
 update_maya() {
   local url=https://github.com/mw00/project-maya tag commit
   tag=$(latest_tag "$url" '^v[0-9]+\.[0-9]+\.[0-9]+$')
@@ -85,9 +97,10 @@ for name in "${names[@]}"; do
     unsloth) update_unsloth ;;
     radiance) update_radiance ;;
     maya) update_maya ;;
+    pihole) update_pihole ;;
     llamaCpp) update_llamacpp ;;
     *)
-      echo "error: unknown pin '$name' (known: unsloth radiance maya llamaCpp)" >&2
+      echo "error: unknown pin '$name' (known: unsloth radiance maya pihole llamaCpp)" >&2
       exit 1
       ;;
   esac
