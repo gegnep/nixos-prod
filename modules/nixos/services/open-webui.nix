@@ -60,6 +60,12 @@ in
           "FRONTEND_BUILD_DIR"
           "${old.passthru.frontend}/share/open-webui"
         ];
+        # open-webui 0.12.3 pins mcp==1.27.2, but nixpkgs feeds it mcp 2.x (httpx2
+        # rewrite, no streamablehttp_client) and pythonRelaxDeps hides the mismatch.
+        # Drop once nixpkgs moves open-webui to mcp_1 or upstream ports to mcp 2.
+        dependencies = map (
+          p: if (p.pname or "") == "mcp" then pkgs.python3Packages.mcp_1 else p
+        ) old.dependencies;
       });
 
       host = "0.0.0.0";
