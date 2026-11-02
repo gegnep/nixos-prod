@@ -8,6 +8,7 @@ NixOS flake for my homelab and VPS fleet.
 |------|---------|------|
 | **homelab** | Ryzen 5 3600, 64 GB, 2× R9700 + Arc A310 | DNS, dashboards, git, inference (llama.cpp/ROCm, Radiance, Maya), Unsloth Studio, printcam, Factorio, backups, build farm. |
 | **sidecar** | Ryzen 3 3100, RTX 3060 | Open WebUI, openai-oauth, small models (llama.cpp/CUDA). |
+| **outpost** | Core i7-6700K, GTX 9070 | w.i.p |
 | **ovh** | OVH VPS (x86_64, BIOS/GRUB) | Public edge: ACME for `*.pengeg.com`, rustypaste, mcp-nixos, ntfy proxy, cam. |
 | **oracle** | Oracle Cloud A1 (aarch64) | Idle (Minecraft pending). Builds on-target. |
 
