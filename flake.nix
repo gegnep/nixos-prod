@@ -91,6 +91,7 @@
       nixosConfigurations = {
         homelab = mkHost { hostname = "homelab"; };
         sidecar = mkHost { hostname = "sidecar"; };
+        outpost = mkHost { hostname = "outpost"; };
         ovh = mkHost { hostname = "ovh"; };
         oracle = mkHost {
           hostname = "oracle";
@@ -134,6 +135,11 @@
         sidecar = {
           imports = mkModules "sidecar";
           deployment.targetHost = "sidecar";
+        };
+
+        outpost = {
+          imports = mkModules "outpost";
+          deployment.targetHost = "outpost";
         };
 
         ovh = {
