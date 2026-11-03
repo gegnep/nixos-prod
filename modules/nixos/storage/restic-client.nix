@@ -11,7 +11,17 @@ let
 in
 {
   options.mySystem.services.resticClient = {
-    enable = lib.mkEnableOption "restic push to the homelab REST server";
+    enable = lib.mkEnableOption "restic push to a fleet REST server";
+
+    server = lib.mkOption {
+      type = lib.types.str;
+      default = "homelab";
+      description = ''
+        Host running the target resticServer. Names the backup job
+        (restic-backups-<server>) and the alerts; the repo URL itself comes
+        from the restic-repo-url-<this host> secret.
+      '';
+    };
 
     paths = lib.mkOption {
       type = lib.types.listOf lib.types.str;
@@ -25,10 +35,19 @@ in
       description = "restic --exclude patterns.";
     };
 
+    oneFileSystem = lib.mkOption {
+      type = lib.types.bool;
+      default = true;
+      description = ''
+        Pass --one-file-system. Off on hosts whose paths span btrfs subvolumes
+        that must be included (each subvolume is its own st_dev to restic).
+      '';
+    };
+
     onCalendar = lib.mkOption {
       type = lib.types.str;
       default = "23:00 UTC";
-      description = "Keep well clear of the homelab's 02:00 UTC prune (exclusive repo lock).";
+      description = "Keep well clear of the server's 02:00 UTC prune (exclusive repo lock).";
     };
   };
 
@@ -38,13 +57,13 @@ in
 
     programs.fuse.enable = true;
 
-    services.restic.backups.homelab = {
+    services.restic.backups.${cfg.server} = {
       repositoryFile = config.sops.secrets."restic-repo-url-${host}".path;
       passwordFile = config.sops.secrets."restic-repo-password-${host}".path;
       initialize = true;
       paths = cfg.paths;
       exclude = cfg.exclude;
-      extraBackupArgs = [ "--one-file-system" ];
+      extraBackupArgs = lib.optional cfg.oneFileSystem "--one-file-system";
       timerConfig = {
         OnCalendar = cfg.onCalendar;
         Persistent = true;
@@ -52,13 +71,13 @@ in
       };
     };
 
-    systemd.services."restic-backups-homelab".onFailure = [ "notify-restic-client-fail.service" ];
+    systemd.services."restic-backups-${cfg.server}".onFailure = [ "notify-restic-client-fail.service" ];
     systemd.services.notify-restic-client-fail = mkFailureUnit {
       name = "restic-client";
-      title = "restic push to homelab FAILED";
+      title = "restic push to ${cfg.server} FAILED on ${host}";
       priority = "urgent";
       tags = "rotating_light,floppy_disk";
-      body = "VPS backup failed. Check: journalctl -u restic-backups-homelab";
+      body = "Backup push failed. Check: journalctl -u restic-backups-${cfg.server}";
     };
   };
 }

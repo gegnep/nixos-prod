@@ -1,4 +1,4 @@
-{ inputs, ... }:
+{ inputs, config, ... }:
 
 {
   imports = [
@@ -100,6 +100,7 @@
       resticServer = {
         enable = true;
         port = 8010;
+        tailnetAddress = "100.68.176.20";
         clients = [
           "blackbox"
           "nixpad"
@@ -109,6 +110,17 @@
         ];
       };
       unifi-backup.enable = true;
+      # Second offsite copy of exactly what B2 gets (client repos included), on
+      # outpost's raid1. After the 02:00 prune and the 03:00 B2 window, before
+      # the clients' 23:00 push.
+      resticClient = {
+        enable = true;
+        server = "outpost";
+        paths = config.services.restic.backups.b2.paths;
+        exclude = config.services.restic.backups.b2.exclude;
+        oneFileSystem = false; # /var/lib/models/gguf is its own subvolume, like B2
+        onCalendar = "05:00 UTC";
+      };
 
       homepage.enable = true;
       caddy.enable = true;

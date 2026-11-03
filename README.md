@@ -8,9 +8,9 @@ NixOS flake for my homelab and VPS fleet.
 |------|---------|------|
 | **homelab** | Ryzen 5 3600, 64 GB, 2× R9700 + Arc A310 | DNS, dashboards, git, inference (llama.cpp/ROCm, Radiance, Maya), Unsloth Studio, printcam, Factorio, backups, build farm. |
 | **sidecar** | Ryzen 3 3100, RTX 3060 | Open WebUI, openai-oauth, small models (llama.cpp/CUDA). |
-| **outpost** | Core i7-6700K, GTX 9070 | w.i.p |
+| **outpost** | Core i7-6700K, GTX 970, 2× 4 TB raid1 (SMR) | Offsite: restic target for homelab, tailnet exit node + subnet router for my parents' LAN. |
 | **ovh** | OVH VPS (x86_64, BIOS/GRUB) | Public edge: ACME for `*.pengeg.com`, rustypaste, mcp-nixos, ntfy proxy, cam. |
-| **oracle** | Oracle Cloud A1 (aarch64) | Idle (Minecraft pending). Builds on-target. |
+| **oracle** | Oracle Cloud A1 (aarch64) | Monifactory server. Builds on-target. |
 
 Each host is one `mkHost` call in `flake.nix` plus `hosts/<name>/{default.nix, disko.nix, hardware-configuration.nix}`. `default.nix` is a flat list of `mySystem.*` enables.
 
@@ -34,7 +34,7 @@ mySystem
 │   ├── amd            { enable lactGpus }                                    # rocm, LACT fan curve per card
 │   ├── intel.enable
 │   └── nvidia.enable                  # open driver + container toolkit
-├── backup.mountPoint                  # raid1 mirror (homelab)
+├── backup.mountPoint                  # raid1 mirror (homelab /backup, outpost /data); scrubbed wherever mounted
 ├── storage            { snapshots nfs scrub }.enable                         # btrbk, NFS export, monthly scrub
 └── services
     ├── caddy          { enable environmentFile }
@@ -65,7 +65,7 @@ mySystem
     ├── flake-builder  { enable repoUrl localPath hosts extraSubstituters onCalendar issueRepo issueLabels }
     ├── restic         { enable paths exclude }                               # → B2
     ├── resticServer   { enable port tailnetAddress dataDir clients pruneOnCalendar }
-    ├── resticClient   { enable paths exclude onCalendar }                    # → resticServer
+    ├── resticClient   { enable server paths exclude oneFileSystem onCalendar }   # → a resticServer (homelab; outpost for homelab itself)
     └── unifi-backup   { enable host remotePath localPath onCalendar }
 ```
 
@@ -83,6 +83,7 @@ mySystem
 ├── hosts/
 │   ├── homelab/                       # + factorio.nix; disko: NVMe + 2×2 TB raid1 → /backup
 │   ├── sidecar/                       # disko: NVMe, nodatacow @models/@containers
+│   ├── outpost/                       # disko: NVMe + 2×4 TB raid1 → /data
 │   ├── ovh/                           # BIOS/GRUB
 │   └── oracle/                        # aarch64
 ├── secrets/<host>.yaml                # sops (age)
@@ -142,10 +143,9 @@ One model holds the GPUs at a time. Radiance and Maya run as podman units (`radi
 [Colmena](https://colmena.cli.rs), from any checkout. Targets take the deploy key as root over the tailnet; sops decrypts on-host.
 
 ```sh
-colmena build                              # eval + build every host, nothing activates
-colmena apply --on sidecar,ovh,oracle      # push over tailnet, activate
-colmena apply-local --sudo                 # homelab itself (never SSH-to-self)
-nh os switch                               # single host, on the box
+colmena build                                   # eval + build every host, nothing activates
+colmena apply --on sidecar,outpost,ovh,oracle   # push over tailnet, activate
+colmena apply-local --sudo                      # homelab itself (never SSH-to-self)
 ```
 
 ### Updates
@@ -177,7 +177,8 @@ Old images: `sudo podman image prune -f`. Never `podman system prune` (kills the
 | btrbk | `@home`, `@var-lib` every 4 h | raid1 mirror |
 | restic | `/home`, `/var/lib` | B2 |
 | unifi-backup | UCG `.unf` | `/var/lib` (then the layers above) |
-| restic REST | blackbox, nixpad, ovh, sidecar | mirror (append-only) |
+| restic REST | blackbox, nixpad, ovh, sidecar, oracle | mirror (append-only) |
+| restic → outpost | what B2 gets, client repos included (05:00 UTC) | outpost raid1 (append-only, pruned there 02:00) |
 
 Client timers avoid the local prune and the B2 window. Studio GGUF exports (`/var/lib/models/gguf/`) go to B2; `/var/lib/models/cache/` goes nowhere.
 

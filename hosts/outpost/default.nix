@@ -27,8 +27,25 @@
     homelabCache.enable = true;
     colmenaTarget.enable = true;
 
+    # raid1 /data (disko). scrub picks it up through this.
+    backup.mountPoint = "/data";
     storage.scrub.enable = true;
 
-    services.smartd.enable = true;
+    services = {
+      smartd.enable = true;
+      beszel.agent = {
+        enable = true;
+        smart = true;
+      };
+
+      # Offsite landing zone for homelab's push (resticClient.server = "outpost").
+      # Append-only like homelab's, so a compromised homelab can't erase it;
+      # retention runs here, against the files.
+      resticServer = {
+        enable = true;
+        tailnetAddress = "100.110.221.82";
+        clients = [ "homelab" ];
+      };
+    };
   };
 }

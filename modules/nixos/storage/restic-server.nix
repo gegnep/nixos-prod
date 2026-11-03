@@ -1,4 +1,5 @@
-# Restic REST server: append-only landing zone for blackbox/nixpad backups.
+# Restic REST server: append-only landing zone for client backups (homelab:
+# desktops, laptop, VPSes; outpost: homelab itself, offsite).
 # Repos live under <backup mirror>/restic/<host>; clients auth via per-host
 # htpasswd users (privateRepos = user X can only touch /X). Clients cannot
 # delete history (--append-only); retention is enforced by the local prune
@@ -7,8 +8,8 @@
 #
 # Port 8010 (mcp-nixos wrapper holds 127.0.0.1:8000; also in use — 2586 ntfy,
 # 3000 open-webui, 5000 harmonia, 8080 pihole, 8384 syncthing, 8888 atuin).
-# Bound to the tailnet IP only. The nixpkgs module is socket-activated with
-# FreeBind=true, so binding 100.68.176.20 before tailscaled is up is fine.
+# Bound to the host's tailnet IP only. The nixpkgs module is socket-activated with
+# FreeBind=true, so binding the tailnet IP before tailscaled is up is fine.
 {
   config,
   lib,
@@ -22,7 +23,7 @@ let
 in
 {
   options.mySystem.services.resticServer = {
-    enable = lib.mkEnableOption "Restic REST server for desktop/laptop backups";
+    enable = lib.mkEnableOption "Restic REST server for client host backups";
 
     port = lib.mkOption {
       type = lib.types.port;
@@ -32,8 +33,8 @@ in
 
     tailnetAddress = lib.mkOption {
       type = lib.types.str;
-      default = "100.68.176.20";
-      description = "Tailnet IP to bind to. Tailnet-only by construction (FreeBind socket).";
+      example = "100.68.176.20";
+      description = "This host's tailnet IP. Tailnet-only by construction (FreeBind socket).";
     };
 
     dataDir = lib.mkOption {
@@ -64,6 +65,15 @@ in
   };
 
   config = lib.mkIf cfg.enable {
+    # A wrong address still binds (FreeBind) and then never receives a packet,
+    # so catch the obvious mistakes at eval.
+    assertions = [
+      {
+        assertion = builtins.match "100\\.[0-9]+\\.[0-9]+\\.[0-9]+" cfg.tailnetAddress != null;
+        message = "mySystem.services.resticServer.tailnetAddress must be this host's tailnet IPv4 (100.x.y.z), got \"${cfg.tailnetAddress}\"";
+      }
+    ];
+
     sops.secrets = {
       # Full htpasswd file (all client lines, bcrypt) as one secret.
       restic-server-htpasswd = {
@@ -91,10 +101,10 @@ in
       title = "Restic REST server DOWN on ${config.networking.hostName}";
       priority = "urgent";
       tags = "rotating_light,floppy_disk";
-      body = "Desktop/laptop backups have no target. Check: journalctl -u restic-rest-server";
+      body = "Client backups (${lib.concatStringsSep ", " cfg.clients}) have no target. Check: journalctl -u restic-rest-server";
     };
 
-    # Homelab-side retention: clients are append-only, so forget/prune runs
+    # Server-side retention: clients are append-only, so forget/prune runs
     # here, directly against the filesystem repos.
     systemd.services.restic-server-prune = {
       description = "Retention (forget --prune) on client restic repos";
@@ -135,11 +145,11 @@ in
       body = "forget/prune/check failed on a client repo (lock contention or corruption). Check: journalctl -u restic-server-prune";
     };
 
-    services.restic.backups.b2.paths = lib.mkIf config.mySystem.services.restic.enable [
-      cfg.dataDir
-    ];
-    services.restic.backups.b2.exclude = lib.mkIf config.mySystem.services.restic.enable [
-      "${cfg.dataDir}/.cache"
-    ];
+    # mkIf on the attrset, not on b2's fields: the latter still defines a b2
+    # job (no repo, no password) on a server host without B2, like outpost.
+    services.restic.backups = lib.mkIf config.mySystem.services.restic.enable {
+      b2.paths = [ cfg.dataDir ];
+      b2.exclude = [ "${cfg.dataDir}/.cache" ];
+    };
   };
 }
