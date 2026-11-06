@@ -1,16 +1,16 @@
 {
   "unsloth": {
-    "version": "2026.10.11",
-    "studioRef": "v0.1.913-beta"
+    "version": "2026.11.2",
+    "studioRef": "v0.1.915-beta"
   },
   "radiance": {
     "image": "docker.io/stilldeadcode/radiance",
-    "digest": "sha256:cccbc0bd6bfef1441e8fcf3ca8d10313d4e6d18a03d9c6ede3bcb15d95376668"
+    "digest": "sha256:c2acbaa373c89272ec47a22befa1cf04d2ddf1de51c2baf534f5273e517f7100"
   },
   "llamaCpp": null,
   "maya": {
-    "tag": "v1.1.49",
-    "commit": "26aacb6bcea9333e4f408a68ee60c4c1c316bd68"
+    "tag": "v1.1.55",
+    "commit": "c4effee67cb95fb4303720919b075fddf04b4e69"
   },
   "pihole": {
     "image": "docker.io/pihole/pihole",
