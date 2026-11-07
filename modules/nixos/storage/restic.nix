@@ -1,7 +1,6 @@
 {
   config,
   lib,
-  pkgs,
   mkFailureUnit,
   ...
 }:
@@ -54,12 +53,6 @@ in
     sops.secrets.restic-b2-app-key = { };
 
     programs.fuse.enable = true;
-    security.wrappers.fusermount = {
-      setuid = true;
-      owner = "root";
-      group = "root";
-      source = "${lib.getBin pkgs.fuse3}/bin/fusermount3";
-    };
 
     # B2 talks S3, so restic wants AWS-style env vars. Compose them into the
     # environmentFile from the two discrete secrets.

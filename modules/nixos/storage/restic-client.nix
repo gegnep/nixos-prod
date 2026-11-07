@@ -1,6 +1,7 @@
 {
   config,
   lib,
+  pkgs,
   mkFailureUnit,
   ...
 }:
@@ -56,6 +57,13 @@ in
     sops.secrets."restic-repo-password-${host}" = { };
 
     programs.fuse.enable = true;
+    # nixpkgs 31ecbaca dropped fuse2; restic's anacrolix/fuse execs `fusermount`.
+    security.wrappers.fusermount = {
+      setuid = true;
+      owner = "root";
+      group = "root";
+      source = "${lib.getBin pkgs.fuse3}/bin/fusermount3";
+    };
 
     services.restic.backups.${cfg.server} = {
       repositoryFile = config.sops.secrets."restic-repo-url-${host}".path;
