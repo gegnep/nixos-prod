@@ -119,11 +119,8 @@ in
 
         # the bot owns the WHOLE lock now — every input, nightly
         nix flake update
-
-        if git diff --quiet -- flake.lock; then
-          echo "flake.lock unchanged; nothing to build"
-          exit 0
-        fi
+        lock_changed=1
+        git diff --quiet -- flake.lock && lock_changed=0
 
         # BUILD EVERY HOST FIRST. Harmonia serves whatever lands in the store,
         # signed as homelab-1. tmp- out-links root the new closures without
@@ -152,6 +149,11 @@ in
           nix build --out-link ${cfg.localPath}/result-"$h" "$(readlink -f ${cfg.localPath}/tmp-"$h")"
           rm -f ${cfg.localPath}/tmp-"$h"
         done
+
+        if [ "$lock_changed" = 0 ]; then
+          echo "flake.lock unchanged; rebuilt HEAD $(git rev-parse --short HEAD) for the cache"
+          exit 0
+        fi
 
         # only now advance the lock the hosts will evaluate
         git -c user.name="flake-builder" \
