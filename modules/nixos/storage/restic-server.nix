@@ -20,6 +20,11 @@
 
 let
   cfg = config.mySystem.services.resticServer;
+  defaultRetention = [
+    "--keep-daily 7"
+    "--keep-weekly 4"
+    "--keep-monthly 6"
+  ];
 in
 {
   options.mySystem.services.resticServer = {
@@ -41,6 +46,24 @@ in
       type = lib.types.str;
       default = "${config.mySystem.backup.mountPoint}/restic";
       description = "Repo root on the raid1 mirror. One subdir per client host.";
+    };
+
+    retention = lib.mkOption {
+      type = lib.types.attrsOf (lib.types.listOf lib.types.str);
+      default = { };
+      example = {
+        dad-pc = [
+          "--keep-daily 14"
+          "--keep-monthly 24"
+          "--keep-yearly 10"
+        ];
+      };
+      description = ''
+        Per-client `restic forget` policy; clients not listed get
+        defaultRetention. A file deleted on the client leaves the repo once
+        the last snapshot holding it ages out, so records with a legal
+        retention period need a --keep-yearly here.
+      '';
     };
 
     clients = lib.mkOption {
@@ -121,7 +144,7 @@ in
           export RESTIC_REPOSITORY=${cfg.dataDir}/${h}
           export RESTIC_PASSWORD_FILE=${config.sops.secrets."restic-repo-password-${h}".path}
           restic unlock   # stale locks only; won't touch a live one
-          restic forget --keep-daily 7 --keep-weekly 4 --keep-monthly 6 --prune
+          restic forget ${lib.concatStringsSep " " (cfg.retention.${h} or defaultRetention)} --prune
           restic check
         else
           echo "=== ${h}: repo not initialized yet, skipping ==="

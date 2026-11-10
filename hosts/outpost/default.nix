@@ -44,8 +44,30 @@
       resticServer = {
         enable = true;
         tailnetAddress = "100.110.221.82";
-        clients = [ "homelab" ];
+        clients = [
+          "homelab"
+          "dad-pc"
+        ];
+        retention.dad-pc = [
+          "--keep-daily 14"
+          "--keep-monthly 24"
+          "--keep-yearly 10"
+        ];
       };
+      # Own offsite copy, straight to B2 (own bucket + app key, not homelab's).
+      # restic-server.nix adds /data/restic to this job's paths; homelab's repo
+      # is excluded because homelab already sends its own data to B2.
+      restic = {
+        enable = true;
+        paths = [ "/data/immich" ];
+        exclude = [
+          "/data/immich/thumbs"
+          "/data/immich/encoded-video"
+          "/data/restic/homelab"
+        ];
+      };
+
+      immich.enable = true;
     };
   };
 }

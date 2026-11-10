@@ -74,6 +74,11 @@
         href = "https://p.pengeg.com";
         group = "Public";
       };
+      immich = {
+        name = "Immich";
+        description = "Photos";
+        href = "http://outpost:2283";
+      };
       ntfy = {
         name = "ntfy";
         description = "Alerts (web UI)";
