@@ -100,7 +100,14 @@
         openRegistration = true;
       };
       buildServer.enable = true;
-      flake-builder.enable = true;
+      flake-builder = {
+        enable = true;
+        hosts = [
+          "blackbox"
+          "nixpad"
+          "theseus"
+        ];
+      };
       restic.enable = true;
       resticServer = {
         enable = true;
