@@ -2,6 +2,8 @@
 {
   mySystem.services.monifactory = {
     enable = true;
+    packVersion = "0.14.0";
+    forgeVersion = "47.4.28";
     players = [ "gegnep" ];
     # Client (Prism) must install the SAME versions. Comment = what to pick.
     mods = [
