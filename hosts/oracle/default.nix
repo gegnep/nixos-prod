@@ -13,6 +13,8 @@
   # OCI serial console (Console Connection in the web UI) — aarch64 uses ttyAMA0
   boot.kernelParams = [ "console=ttyAMA0,115200" ];
 
+  services.tailscale.openFirewall = true;
+
   mySystem = {
     # failure alerts POST to homelab's ntfy over the tailnet (raw IP on purpose —
     # no DNS dependency in the failure path)
