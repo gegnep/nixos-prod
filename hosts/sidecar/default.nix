@@ -9,6 +9,8 @@
   networking.hostName = "sidecar";
   system.stateVersion = "26.11";
 
+  services.tailscale.port = 41652;
+
   mySystem = {
     # raw tailnet IP on purpose: no DNS dependency in the failure path
     notify.url = "http://100.68.176.20:2586";

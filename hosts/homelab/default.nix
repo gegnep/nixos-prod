@@ -9,6 +9,7 @@
   ];
 
   networking.hostName = "homelab";
+  services.tailscale.port = 41651;
 
   boot = {
     binfmt.emulatedSystems = [ "aarch64-linux" ];
